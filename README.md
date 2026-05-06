@@ -43,7 +43,8 @@ This project is especially relevant for:
 ## 🧩 Core Capabilities
 
 ### 🎨 Visual Asset Library
-- Backgrounds  
+- Backgrounds
+- Character sheets
 - Character scenes  
 - Characters  
 - Badges  
@@ -85,10 +86,11 @@ This separation prevents the common failure mode of AI tools where everything is
 ### 1. Role-Aware Prompt Construction
 The system distinguishes between:
 
+- Character sheets (multi angle character poses) 
+- Characters  
+- Character scenes
 - Primary background  
 - Additional background references  
-- Characters  
-- Character scenes  
 - Badges  
 - Textures & patterns  
 - Logos  
@@ -153,7 +155,8 @@ Key UX considerations:
 - TypeScript  
 - Tailwind CSS  
 - OpenAI API  
-- Local filesystem persistence via Next.js route handlers  
+- Local filesystem persistence via Next.js route handlers
+- SQLite library metadata management
 
 ## 🔮 Future Development
 
