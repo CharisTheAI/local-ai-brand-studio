@@ -1,17 +1,14 @@
-# GVC Content Studio
+# local-ai-brand-studio
 
-Local-first, reference-driven AI content studio for building brand-consistent image prompts around reusable characters, scenes, and visual systems.
+Local-first, reference-driven AI content studio for building brand-consistent image prompts, managing reusable assets, and generating character-based visual content.
 
-> Built using The Playground and the GVC Builder Kit.  
-> Personal-use project. Not officially approved or endorsed by Good Vibes Club.
+## Overview
 
-## Why I Built This
-
-Most AI image tools are great at generating novelty and weak at maintaining brand consistency.
+Most AI image tools are great at novelty and weak at maintaining brand consistency.
 
 This project is an attempt to close that gap.
 
-`GVC Content Studio` is a local creative tool designed to:
+`local-ai-brand-studio` is a local creative tool designed to:
 
 - organize a reusable brand asset library
 - structure prompt inputs instead of throwing references into one pile
@@ -19,13 +16,13 @@ This project is an attempt to close that gap.
 - keep images and workspace data local-first
 - support high-quality prompt engineering that can outlive any single model vendor
 
-The product idea is simple:
+Core idea:
 
-Pick the right references, prompt with intent, preserve the brand system, and make image generation feel more like a real production workflow than a one-off experiment.
+> Pick the right references, prompt with intent, preserve the brand system, and make image generation feel more like a real production workflow than a one-off experiment.
 
 ## What This Project Demonstrates
 
-This repo is especially relevant for recruiters, AI companies, and product teams interested in:
+This repo is especially relevant for:
 
 - applied AI product thinking
 - prompt engineering as system design
@@ -36,24 +33,32 @@ This repo is especially relevant for recruiters, AI companies, and product teams
 
 ## Core Capabilities
 
-- Visual asset library with classification by:
-  - `Backgrounds`
-  - `Character Scenes`
-  - `Characters`
-  - `Badges`
-  - `Textures & Patterns`
-  - `Logo`
-- Text asset library for:
-  - `Prompt Starters`
-  - `Camera Framing Presets`
-  - `Pose & Action Presets`
-- Clickable thumbnail-based generation inputs
-- Multi-character scene selection
-- Multi-background reference blending
-- Local managed-file storage for saved visual assets
-- Local workspace persistence with backup
-- Role-aware backend prompt construction
-- OpenAI-powered image generation with a model-agnostic prompt strategy
+### Visual Asset Library
+
+- Backgrounds
+- Character Sheets
+- Character Scenes
+- Characters
+- Badges
+- Textures & Patterns
+- Logos
+
+### Text Asset Library
+
+- Prompt Starters
+- Camera Framing Presets
+- Pose & Action Presets
+
+### Features
+
+- clickable thumbnail-based generation inputs
+- multi-character scene selection
+- multi-background reference blending
+- local managed-file storage for visual assets
+- local workspace persistence plus backup
+- role-aware backend prompt construction
+- model-agnostic generation architecture with an OpenAI adapter used for current testing
+- QA audit and correction flow for generated outputs
 
 ## Product Design Approach
 
@@ -61,9 +66,9 @@ This is not just a prompt form.
 
 The app separates the workflow into 3 distinct jobs:
 
-1. Build the scene.
-2. Review and generate.
-3. Manage the underlying asset system.
+1. Build the scene
+2. Review and generate
+3. Manage the underlying asset system
 
 That separation matters because creative tools break down quickly when generation controls, library administration, and review outputs are all mixed together.
 
@@ -71,28 +76,33 @@ That separation matters because creative tools break down quickly when generatio
 
 ### 1. Role-Aware Prompt Construction
 
-The generation backend does not treat all references equally.
+The backend does not treat all references equally.
 
 It distinguishes between:
 
-- primary background
-- additional background blend references
+- character sheets
 - characters
 - character scenes
+- primary backgrounds
+- additional background blend references
 - badges
 - textures and patterns
 - logos
 - text presets such as framing and pose
 
-This creates a better prompt package for any image model because each reference is passed with intent, not just presence.
+Each element is injected into prompts with intent, not just presence.
 
 ### 2. Brand Guidance As Active Input
 
-Brand rules are not hidden in a doc nobody reads.
+Brand rules are not passive documentation.
 
-The backend reads [`CODEX.md`](./CODEX.md) and injects that guidance into the generation pipeline so the visual system, character language, and quality rules influence every request.
+The system reads [`CODEX.md`](./CODEX.md) and injects that guidance directly into generation so outputs reflect:
 
-### 3. Character Integrity Matters
+- visual system rules
+- character language
+- quality standards
+
+### 3. Character Integrity Focus
 
 The app is designed around the idea that details matter:
 
@@ -103,7 +113,7 @@ The app is designed around the idea that details matter:
 - outfit logic
 - silhouette consistency
 
-That is especially important for collectible, character-driven brands where “close enough” usually fails.
+This is especially important for collectible and character-driven brands where “close enough” usually fails.
 
 ### 4. Local-First Asset Handling
 
@@ -118,9 +128,9 @@ That improves:
 
 ### 5. Product Thinking Over Demo Thinking
 
-This project is intentionally moving beyond “AI demo app” territory.
+This project intentionally moves beyond “AI demo app” design.
 
-The design choices are aimed at real usability:
+Key UX considerations:
 
 - searchable asset browsers
 - pop-out editing flows
@@ -130,12 +140,13 @@ The design choices are aimed at real usability:
 
 ## Stack
 
-- `Next.js 14`
-- `React 18`
-- `TypeScript`
-- `Tailwind CSS`
-- `OpenAI API`
-- local filesystem persistence through Next.js route handlers
+- Next.js
+- React
+- TypeScript
+- Tailwind CSS
+- OpenAI API for the current adapter
+- local filesystem persistence via Next.js route handlers
+- SQLite library metadata management
 
 ## Architecture At A Glance
 
@@ -143,16 +154,17 @@ High-level flow:
 
 ```mermaid
 flowchart LR
-  A["Generation Setup"] --> B["Structured Prompt Payload"]
-  B --> C["/api/generate"]
-  C --> D["Role-aware prompt builder"]
-  D --> E["OpenAI Responses API + image_generation tool"]
-  E --> F["Generated image results"]
+  A["Generation Setup"] --> B["Compiled prompt + rules + reference roles"]
+  B --> C["Provider adapter"]
+  C --> D["Image generation backend"]
+  D --> E["Generated image results"]
+  E --> F["QA audit + correction pass"]
   G["Saved Visual Assets"] --> H["Managed local asset files"]
-  I["Workspace State"] --> J["Local JSON persistence + backup"]
+  I["Saved Text Assets"] --> B
+  J["SQLite library metadata"] --> G
 ```
 
-For the full architecture and prompt-flow diagrams, see [ARCHITECTURE.md](./ARCHITECTURE.md).
+For the fuller system overview, see [ARCHITECTURE.md](./ARCHITECTURE.md).
 
 ## Repository Structure
 
@@ -160,14 +172,15 @@ For the full architecture and prompt-flow diagrams, see [ARCHITECTURE.md](./ARCH
 app/
   api/
     assets/route.ts        # save/delete managed visual assets
-    generate/route.ts      # build prompts and call OpenAI
-    workspace/route.ts     # load/save workspace state
+    generate/route.ts      # compile prompts, call provider adapter, run QA
+    library/route.ts       # load/save SQLite-backed library metadata
+    workspace/route.ts     # load/save session state
   page.tsx                 # main product UI
+lib/
+  library-db.ts            # SQLite library access
 public/
-  managed-library/assets/  # app-managed saved image files
-data/
-  workspace.json           # primary workspace persistence
-  workspace.backup.json    # backup workspace persistence
+  managed-library/assets/  # app-managed saved image files (gitignored)
+data/                      # local runtime data (gitignored)
 CODEX.md                   # brand guidance used by generation
 ARCHITECTURE.md            # system overview and diagrams
 ```
@@ -178,7 +191,7 @@ ARCHITECTURE.md            # system overview and diagrams
 
 - Node.js
 - npm
-- an OpenAI API key
+- an OpenAI API key for the current adapter
 
 ### Setup
 
@@ -220,10 +233,11 @@ What is already strong:
 
 What still needs hardening:
 
+- deeper model-agnostic provider adapter support
+- stronger identity-fidelity enforcement across image backends
 - export/import backups
 - broken-file health checks
-- more debugging visibility into generated prompt payloads
-- deeper model-agnostic tuning across multiple image backends
+- richer debugging visibility into generation payloads and QA results
 
 ## Why This Matters For AI Product Work
 
@@ -239,19 +253,21 @@ This project focuses on the systems around the model:
 
 That is the kind of work required to make AI useful in actual production environments.
 
-## Roadmap
+## Future Development
 
-- export/import library snapshots
-- asset health and broken-reference checks
-- prompt-debug view for generation transparency
-- richer multi-character scene orchestration
-- support for additional image generation backends
-- stronger content workflows beyond images alone
+This project is evolving toward a more complete multimodal content system beyond static image generation.
+
+- video, GIF, and meme generation from structured scene inputs
+- integrated audio workflows aligned with content and tone
+- character-driven script and narrative generation for consistent storytelling
+- cross-modal workflows combining image, video, audio, and text into unified outputs
+- advanced character systems with persistent identity and multi-character interaction
+
+Goal: evolve from a prompt-based tool into a fuller AI-assisted content production system for scalable, brand-consistent creative work.
 
 ## Credits And Usage Notes
 
 - Made using the GVC Builder Kit
 - Personal-use project
-- Not affiliated with or endorsed by Good Vibes Club
+- Not officially approved or endorsed by Good Vibes Club
 - Respect the original kit’s usage terms and visible credit requirements
-
