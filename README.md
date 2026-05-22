@@ -92,7 +92,19 @@ It distinguishes between:
 
 Each element is injected into prompts with intent, not just presence.
 
-### 2. Brand Guidance As Active Input
+### 2. QA Audit And Correction Loop
+
+Generated images are not treated as automatically acceptable.
+
+The current pipeline includes:
+
+- a QA audit pass against the selected canonical references
+- explicit identity checks for facial-system drift, hand-digit failures, silhouette drift, and other character-rule violations
+- a correction pass that attempts to repair flagged outputs while preserving the successful parts of the scene
+
+This makes failures more visible, improves iteration, and creates a foundation for provider-specific quality control across future image backends.
+
+### 3. Brand Guidance As Active Input
 
 Brand rules are not passive documentation.
 
@@ -102,7 +114,7 @@ The system reads [`CODEX.md`](./CODEX.md) and injects that guidance directly int
 - character language
 - quality standards
 
-### 3. Character Integrity Focus
+### 4. Character Integrity Focus
 
 The app is designed around the idea that details matter:
 
@@ -115,7 +127,7 @@ The app is designed around the idea that details matter:
 
 This is especially important for collectible and character-driven brands where “close enough” usually fails.
 
-### 4. Local-First Asset Handling
+### 5. Local-First Asset Handling
 
 Instead of keeping large visual assets trapped in browser storage, saved files are written into an app-managed local folder and referenced from there.
 
@@ -126,7 +138,7 @@ That improves:
 - scale
 - storage reliability
 
-### 5. Product Thinking Over Demo Thinking
+### 6. Product Thinking Over Demo Thinking
 
 This project intentionally moves beyond “AI demo app” design.
 
