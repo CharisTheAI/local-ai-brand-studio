@@ -28,6 +28,7 @@ type LibraryCategory =
   | "textures-patterns"
   | "logo";
 type TextPresetKind = "prompt-starters" | "camera-framing" | "pose-action";
+type ImageModelProvider = "openai" | "google";
 
 type LibraryAsset = {
   id: string;
@@ -66,6 +67,14 @@ type GeneratedImage = {
     issues: string[];
     summary?: string;
   } | null;
+};
+
+type AvailableImageModel = {
+  id: string;
+  label: string;
+  provider: ImageModelProvider;
+  runtimeModel: string;
+  supportsNativeHighRes: boolean;
 };
 
 type AssetBrowserItem = LibraryAsset & {
@@ -118,9 +127,10 @@ type SavedLibrary = {
 };
 
 type SavedWorkspace = {
-  version: 5;
+  version: 6;
   activeCollectionId: string;
   pendingTextAssets: PendingTextAsset[];
+  selectedImageModelId: string;
   selectedPromptStarterId: string;
   selectedCameraPresetId: string;
   selectedPosePresetId: string;
@@ -266,6 +276,22 @@ async function readLibraryFromDb() {
   return (await response.json()) as SavedLibrary | null;
 }
 
+async function readImageModels() {
+  const response = await fetch("/api/image-models", {
+    method: "GET",
+    cache: "no-store",
+  });
+
+  if (!response.ok) {
+    throw new Error("Image model load failed.");
+  }
+
+  return (await response.json()) as {
+    models: AvailableImageModel[];
+    defaultModelId: string;
+  };
+}
+
 async function writeWorkspaceToDb(payload: SavedWorkspace) {
   const response = await fetch("/api/workspace", {
     method: "POST",
@@ -328,14 +354,26 @@ function coerceLibrary(saved: Partial<SavedLibrary> | null): SavedLibrary {
   };
 }
 
-function coerceWorkspace(saved: Partial<SavedWorkspace> | null, library: SavedLibrary): SavedWorkspace {
+function coerceWorkspace(
+  saved: Partial<SavedWorkspace> | null,
+  library: SavedLibrary,
+  availableImageModels: AvailableImageModel[] = [],
+  defaultImageModelId = ""
+): SavedWorkspace {
+  const selectedImageModelId =
+    availableImageModels.find((model) => model.id === saved?.selectedImageModelId)?.id ||
+    availableImageModels[0]?.id ||
+    defaultImageModelId ||
+    "";
+
   return {
-    version: 5,
+    version: 6,
     activeCollectionId:
       library.assetCollections.find((collection) => collection.id === saved?.activeCollectionId)?.id ||
       library.assetCollections[0]?.id ||
       DEFAULT_COLLECTION_ID,
     pendingTextAssets: saved?.pendingTextAssets || [],
+    selectedImageModelId,
     selectedPromptStarterId:
       library.promptStarters.find((preset) => preset.id === saved?.selectedPromptStarterId)?.id || "",
     selectedCameraPresetId:
@@ -400,6 +438,8 @@ export default function Home() {
   const [cameraFramingPresets, setCameraFramingPresets] = useState<TextPreset[]>(getDefaultCameraPresets());
   const [poseActionPresets, setPoseActionPresets] = useState<TextPreset[]>(getDefaultPosePresets());
   const [pendingTextAssets, setPendingTextAssets] = useState<PendingTextAsset[]>([]);
+  const [availableImageModels, setAvailableImageModels] = useState<AvailableImageModel[]>([]);
+  const [selectedImageModelId, setSelectedImageModelId] = useState("");
   const [selectedPromptStarterId, setSelectedPromptStarterId] = useState("");
   const [selectedCameraPresetId, setSelectedCameraPresetId] = useState("");
   const [selectedPosePresetId, setSelectedPosePresetId] = useState("");
@@ -445,6 +485,7 @@ export default function Home() {
   const exportProfile = getExportProfile(aspectRatio, quality);
 
   const selectedPromptStarter = promptStarters.find((preset) => preset.id === selectedPromptStarterId) || null;
+  const selectedImageModel = availableImageModels.find((model) => model.id === selectedImageModelId) || null;
   const selectedCameraPreset = cameraFramingPresets.find((preset) => preset.id === selectedCameraPresetId) || null;
   const selectedPosePreset = poseActionPresets.find((preset) => preset.id === selectedPosePresetId) || null;
   const sortedPromptStarters = useMemo(() => sortPresetsForDropdown(promptStarters), [promptStarters]);
@@ -535,7 +576,7 @@ export default function Home() {
   const filteredCombinedVisualAssets = filterReferenceAssets(combinedVisualInfluenceAssets);
 
   const canGenerate =
-    Boolean(scenePrompt.trim()) && selectedAllVisualAssets.length > 0;
+    Boolean(scenePrompt.trim()) && selectedAllVisualAssets.length > 0 && Boolean(selectedImageModelId);
 
   const generationChecks = [
     { label: "Main prompt", done: Boolean(scenePrompt.trim()) },
@@ -612,9 +653,10 @@ export default function Home() {
     let ignore = false;
 
     void (async () => {
-      const [libraryResult, workspaceResult] = await Promise.allSettled([
+      const [libraryResult, workspaceResult, imageModelsResult] = await Promise.allSettled([
         readLibraryFromDb(),
         readWorkspaceFromDb(),
+        readImageModels(),
       ]);
 
       if (ignore) return;
@@ -624,18 +666,25 @@ export default function Home() {
           ? coerceLibrary(libraryResult.value)
           : coerceLibrary(null);
 
+      const imageModels =
+        imageModelsResult.status === "fulfilled" ? imageModelsResult.value.models : [];
+      const defaultImageModelId =
+        imageModelsResult.status === "fulfilled" ? imageModelsResult.value.defaultModelId : "";
+
       const workspace =
         workspaceResult.status === "fulfilled"
-          ? coerceWorkspace(workspaceResult.value, library)
-          : coerceWorkspace(null, library);
+          ? coerceWorkspace(workspaceResult.value, library, imageModels, defaultImageModelId)
+          : coerceWorkspace(null, library, imageModels, defaultImageModelId);
 
       setAssetCollections(library.assetCollections);
       setPromptStarters(library.promptStarters);
       setCameraFramingPresets(library.cameraFramingPresets);
       setPoseActionPresets(library.poseActionPresets);
+      setAvailableImageModels(imageModels);
 
       setActiveCollectionId(workspace.activeCollectionId);
       setPendingTextAssets(workspace.pendingTextAssets);
+      setSelectedImageModelId(workspace.selectedImageModelId);
       setSelectedPromptStarterId(workspace.selectedPromptStarterId);
       setSelectedCameraPresetId(workspace.selectedCameraPresetId);
       setSelectedPosePresetId(workspace.selectedPosePresetId);
@@ -660,6 +709,12 @@ export default function Home() {
         toast.error("Library load failed. Library auto-save is paused to protect your saved data.");
       }
 
+      if (imageModelsResult.status !== "fulfilled") {
+        toast.error("Image model load failed.");
+      } else if (imageModels.length === 0) {
+        toast.error("No configured image models are available.");
+      }
+
       if (workspaceResult.status !== "fulfilled") {
         toast.error("Workspace load failed. Workspace auto-save is paused to protect your saved data.");
       }
@@ -679,9 +734,10 @@ export default function Home() {
 
     saveDebounceRef.current = window.setTimeout(() => {
       void writeWorkspaceToDb({
-        version: 5,
+        version: 6,
         activeCollectionId,
         pendingTextAssets,
+        selectedImageModelId,
         selectedPromptStarterId,
         selectedCameraPresetId,
         selectedPosePresetId,
@@ -709,6 +765,7 @@ export default function Home() {
     isHydrated,
     activeCollectionId,
     pendingTextAssets,
+    selectedImageModelId,
     selectedPromptStarterId,
     selectedCameraPresetId,
     selectedPosePresetId,
@@ -1114,6 +1171,11 @@ export default function Home() {
       return;
     }
 
+    if (!selectedImageModelId) {
+      toast.error("Choose an image model first.");
+      return;
+    }
+
     const primaryVisualAnchor =
       selectedBackgroundAssets[0] ||
       selectedCharacterSheetAssets[0] ||
@@ -1132,6 +1194,7 @@ export default function Home() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          imageModelId: selectedImageModelId,
           templateName: "Custom GVC content",
           tone: "Custom",
           aspectRatio,
@@ -1224,7 +1287,13 @@ export default function Home() {
       cameraFramingPresets,
       poseActionPresets,
     });
-    const fresh = coerceWorkspace(null, library);
+    const fresh = coerceWorkspace(
+      { selectedImageModelId },
+      library,
+      availableImageModels,
+      availableImageModels[0]?.id || ""
+    );
+    const preservedGeneratedImages = generatedImages;
     setActiveCollectionId(fresh.activeCollectionId);
     setPendingTextAssets([]);
     setSelectedPromptStarterId(fresh.selectedPromptStarterId);
@@ -1244,7 +1313,7 @@ export default function Home() {
     setPosePrompt("");
     setUploadCategory("backgrounds");
     setPendingAssets([]);
-    setGeneratedImages([]);
+    setGeneratedImages(preservedGeneratedImages);
     setAssetSearchQuery("");
     setAssetFilterCategory("");
     setAssetFilterCollectionId("");
@@ -1255,7 +1324,27 @@ export default function Home() {
     setEditingAssetDraft(null);
     setEditingTextDraft(null);
     setExpandedGeneratedImage(null);
-    await clearWorkspaceFromDb();
+    await writeWorkspaceToDb({
+      ...fresh,
+      version: 6,
+      pendingTextAssets: [],
+      selectedImageModelId: fresh.selectedImageModelId,
+      selectedPromptStarterId: fresh.selectedPromptStarterId,
+      selectedCameraPresetId: fresh.selectedCameraPresetId,
+      selectedPosePresetId: fresh.selectedPosePresetId,
+      selectedBackgroundIds: [],
+      selectedCharacterSheetIds: [],
+      selectedCharacterIds: [],
+      selectedVisualReferenceIds: [],
+      aspectRatio: "1:1",
+      quality: "medium",
+      scenePrompt: "",
+      posePrompt: "",
+      uploadCategory: "backgrounds",
+      pendingAssets: [],
+      generatedImages: preservedGeneratedImages,
+      savedAt: new Date().toISOString(),
+    });
     toast.success("Workspace reset.");
   }
 
@@ -1349,6 +1438,24 @@ export default function Home() {
               </div>
 
               <div className="mt-6 grid gap-4">
+                <label className="field">
+                  <span>Image Model</span>
+                  <select
+                    value={selectedImageModelId}
+                    onChange={(event) => setSelectedImageModelId(event.target.value)}
+                    disabled={availableImageModels.length === 0}
+                  >
+                    {availableImageModels.length === 0 ? (
+                      <option value="">No image models configured</option>
+                    ) : null}
+                    {availableImageModels.map((model) => (
+                      <option key={model.id} value={model.id}>
+                        {model.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
                 <label className="field">
                   <span>Main Prompt</span>
                   <textarea
@@ -1564,7 +1671,11 @@ export default function Home() {
                 </button>
               </div>
 
-              <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-2">
+              <div className="mt-6 grid gap-4 md:grid-cols-3 xl:grid-cols-3">
+                <div className="panel-subtle">
+                  <div className="stat-label">Image Model</div>
+                  <div className="mt-2 text-sm text-white">{selectedImageModel?.label || "None selected"}</div>
+                </div>
                 <div className="panel-subtle">
                   <div className="stat-label">Visual Assets</div>
                   <div className="mt-2 text-sm text-white">{selectedAllVisualAssets.length} selected</div>

@@ -4,6 +4,8 @@ import { makeParseableTextFormat } from "openai/lib/parser";
 import fs from "fs/promises";
 import path from "path";
 
+import { findAvailableImageModelById, type ImageModelDefinition } from "@/lib/image-models";
+
 type AspectRatio = "1:1" | "16:9" | "9:16";
 type RenderQuality = "low" | "medium" | "high";
 
@@ -29,6 +31,7 @@ type DetailReference = {
 };
 
 type GeneratePayload = {
+  imageModelId?: string;
   templateName: string;
   tone: string;
   aspectRatio: AspectRatio;
@@ -73,6 +76,19 @@ type QualityQaResult = {
 type GeneratedImageResult = {
   b64_json: string;
   revised_prompt?: string;
+};
+
+type ResolvedImageReference = {
+  name: string;
+  dataUrl: string;
+};
+
+type GenerateWithModelArgs = {
+  selectedModel: ImageModelDefinition;
+  client: OpenAI | null;
+  payload: GeneratePayload;
+  prompt: string;
+  imageReferences: ResolvedImageReference[];
 };
 
 const BRAND_STYLE_GUIDE = [
@@ -159,6 +175,12 @@ function getOutputSize(aspectRatio: AspectRatio) {
   if (aspectRatio === "1:1") return "1024x1024";
   if (aspectRatio === "9:16") return "1024x1536";
   return "1536x1024";
+}
+
+function getGeminiImageSize(quality: RenderQuality) {
+  if (quality === "low") return "1K";
+  if (quality === "medium") return "2K";
+  return "4K";
 }
 
 function getMimeTypeFromExtension(filePath: string) {
@@ -249,6 +271,133 @@ async function inputToUploadable(input: string, baseName: string) {
   const { mimeType, bytes } = dataUrlToBuffer(input);
   const extension = extensionFromMimeType(mimeType);
   return toFile(bytes, `${baseName}.${extension}`, { type: mimeType });
+}
+
+function dataUrlToGeminiInlinePart(dataUrl: string) {
+  const match = dataUrl.match(/^data:([^;]+);base64,(.+)$/);
+  if (!match) {
+    throw new Error("Invalid data URL format.");
+  }
+
+  return {
+    inline_data: {
+      mime_type: match[1],
+      data: match[2],
+    },
+  };
+}
+
+function parseGeminiImageResponse(data: any): GeneratedImageResult | null {
+  const candidates = Array.isArray(data?.candidates) ? data.candidates : [];
+
+  for (const candidate of candidates) {
+    const parts = Array.isArray(candidate?.content?.parts) ? candidate.content.parts : [];
+    const imagePart = parts.find((part: any) => part?.inlineData?.data || part?.inline_data?.data);
+
+    if (!imagePart) {
+      continue;
+    }
+
+    const textParts = parts
+      .map((part: any) => part?.text)
+      .filter((part: unknown): part is string => typeof part === "string" && part.trim().length > 0);
+
+    return {
+      b64_json: imagePart.inlineData?.data || imagePart.inline_data?.data,
+      revised_prompt: textParts.join("\n").trim() || undefined,
+    };
+  }
+
+  return null;
+}
+
+async function generateWithOpenAi(args: GenerateWithModelArgs): Promise<GeneratedImageResult> {
+  const { client, payload, prompt, imageReferences, selectedModel } = args;
+
+  if (!client) {
+    throw new Error("Missing OPENAI_API_KEY for the selected image model.");
+  }
+
+  const uploadables = await Promise.all(
+    imageReferences.map((reference, index) => inputToUploadable(reference.dataUrl, `${reference.name || "image"}-${index + 1}`))
+  );
+
+  const response = await client.images.edit({
+    model: selectedModel.runtimeModel,
+    image: uploadables,
+    prompt,
+    size: getOutputSize(payload.aspectRatio),
+    quality: payload.quality,
+    background: "auto",
+  });
+
+  const image = response.data?.[0];
+  if (!image?.b64_json) {
+    throw new Error("OpenAI returned no image. Try simplifying the prompt or references.");
+  }
+
+  return {
+    b64_json: image.b64_json,
+    revised_prompt: image.revised_prompt ?? undefined,
+  };
+}
+
+async function generateWithGemini(args: GenerateWithModelArgs): Promise<GeneratedImageResult> {
+  const { payload, prompt, imageReferences, selectedModel } = args;
+
+  if (!process.env.GEMINI_API_KEY) {
+    throw new Error("Missing GEMINI_API_KEY for the selected image model.");
+  }
+
+  const limitedReferences = imageReferences.slice(0, 3);
+
+  const response = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/${selectedModel.runtimeModel}:generateContent`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-goog-api-key": process.env.GEMINI_API_KEY,
+      },
+      body: JSON.stringify({
+        contents: [
+          {
+            parts: [
+              { text: prompt },
+              ...limitedReferences.map((reference) => dataUrlToGeminiInlinePart(reference.dataUrl)),
+            ],
+          },
+        ],
+        generationConfig: {
+          responseModalities: ["IMAGE"],
+          imageConfig: {
+            aspectRatio: payload.aspectRatio,
+            imageSize: getGeminiImageSize(payload.quality),
+          },
+        },
+      }),
+    }
+  );
+
+  const data = await response.json().catch(() => null);
+  if (!response.ok) {
+    throw new Error(data?.error?.message || "Gemini image generation failed.");
+  }
+
+  const generated = parseGeminiImageResponse(data);
+  if (!generated?.b64_json) {
+    throw new Error("Gemini returned no image. Try simplifying the prompt or references.");
+  }
+
+  return generated;
+}
+
+async function generateWithSelectedModel(args: GenerateWithModelArgs): Promise<GeneratedImageResult> {
+  if (args.selectedModel.provider === "google") {
+    return generateWithGemini(args);
+  }
+
+  return generateWithOpenAi(args);
 }
 
 function summarizeReferences(detailReferences: DetailReference[]) {
@@ -831,41 +980,45 @@ function buildHardBlockerRepairPrompt(args: {
 }
 
 export async function POST(request: Request) {
-  if (!process.env.OPENAI_API_KEY) {
-    return NextResponse.json(
-      { error: "Missing OPENAI_API_KEY. Add it to your local environment first." },
-      { status: 400 }
-    );
-  }
-
   try {
     const payload = (await request.json()) as GeneratePayload;
+    const selectedModel = findAvailableImageModelById(payload.imageModelId);
+    if (!selectedModel) {
+      return NextResponse.json(
+        { error: "No configured image models are available. Add an API key for at least one provider first." },
+        { status: 400 }
+      );
+    }
 
-    const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+    const client = process.env.OPENAI_API_KEY ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY }) : null;
     const backgroundDataUrl = await resolveImageInput(payload.backgroundDataUrl || payload.backgroundSrc || null);
 
     const codexGuidance = await readCodexGuidance();
     const prompt = buildGenerationPrompt(payload, codexGuidance);
 
-    const resolvedCharacterSheetInputs = await Promise.all(
+    const resolvedCharacterSheetInputs = (
+      await Promise.all(
       (payload.characterSheets || []).slice(0, 4).map(async (sheet, index) => {
         const resolved = await resolveImageInput(sheet.dataUrl);
         if (!resolved) {
           throw new Error(`Character sheet ${index + 1} could not be resolved.`);
         }
-        return inputToUploadable(resolved, `character-sheet-${index + 1}`);
+        return { name: `character-sheet-${index + 1}`, dataUrl: resolved };
       })
-    );
+      )
+    ).filter(Boolean) as ResolvedImageReference[];
 
-    const resolvedCharacterInputs = await Promise.all(
+    const resolvedCharacterInputs = (
+      await Promise.all(
       payload.characters.slice(0, 4).map(async (character, index) => {
         const resolved = await resolveImageInput(character.dataUrl);
         if (!resolved) {
           throw new Error(`Character reference ${index + 1} could not be resolved.`);
         }
-        return inputToUploadable(resolved, `character-reference-${index + 1}`);
+        return { name: `character-reference-${index + 1}`, dataUrl: resolved };
       })
-    );
+      )
+    ).filter(Boolean) as ResolvedImageReference[];
 
     const prioritizedDetails = prioritizeDetailReferences(payload.detailReferences || []);
 
@@ -874,29 +1027,27 @@ export async function POST(request: Request) {
         prioritizedDetails.map(async (detail, index) => {
           const resolved = await resolveImageInput(detail.dataUrl || detail.src || null);
           if (!resolved) return null;
-          return inputToUploadable(resolved, `detail-reference-${index + 1}`);
+          return { name: `detail-reference-${index + 1}`, dataUrl: resolved };
         })
       )
-    ).filter((entry): entry is Awaited<ReturnType<typeof inputToUploadable>> => Boolean(entry));
-
-    const imageModel = getConfiguredImageEditModel();
+    ).filter((entry): entry is ResolvedImageReference => Boolean(entry));
 
     const replacementMode = isSceneReplacementPrompt(payload);
-    const backgroundUpload = backgroundDataUrl
-      ? await inputToUploadable(backgroundDataUrl, "primary-background")
+    const backgroundReference = backgroundDataUrl
+      ? { name: "primary-background", dataUrl: backgroundDataUrl }
       : null;
 
     const identityInputs = [...resolvedCharacterSheetInputs, ...resolvedCharacterInputs];
 
     const imageInputs = replacementMode
       ? [
-          ...(backgroundUpload ? [backgroundUpload] : []),
+          ...(backgroundReference ? [backgroundReference] : []),
           ...identityInputs,
           ...resolvedDetailInputs,
         ]
       : [
           ...identityInputs,
-          ...(backgroundUpload ? [backgroundUpload] : []),
+          ...(backgroundReference ? [backgroundReference] : []),
           ...resolvedDetailInputs,
         ];
 
@@ -904,80 +1055,61 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Select at least one visual asset." }, { status: 400 });
     }
 
-    const response = await client.images.edit({
-      model: imageModel,
-      image: imageInputs,
+    let editedImage = await generateWithSelectedModel({
+      selectedModel,
+      client,
+      payload,
       prompt,
-      size: getOutputSize(payload.aspectRatio),
-      quality: payload.quality,
-      background: "auto",
+      imageReferences: imageInputs,
     });
-
-    const initialImage = response.data?.[0];
-
-    if (!initialImage?.b64_json) {
-      return NextResponse.json(
-        { error: "OpenAI returned no image. Try simplifying the prompt or references." },
-        { status: 502 }
-      );
-    }
-
-    let editedImage: GeneratedImageResult = {
-      b64_json: initialImage.b64_json,
-      revised_prompt: initialImage.revised_prompt ?? undefined,
-    };
 
     const generatedImageDataUrl = `data:image/png;base64,${editedImage.b64_json}`;
 
-    const qaModel = getConfiguredQaModel();
+    const qaModel = client ? getConfiguredQaModel() : null;
     let qaResult: QualityQaResult | null = null;
     let qaError: string | null = null;
 
-    try {
-      qaResult = await runQualityQaCheck({
-        client,
-        generatedImageDataUrl,
-        payload,
-        backgroundDataUrl,
-        prioritizedDetails,
-      });
-    } catch (error) {
-      qaResult = null;
-      qaError = error instanceof Error ? error.message : "Unknown QA failure";
+    if (client) {
+      try {
+        qaResult = await runQualityQaCheck({
+          client,
+          generatedImageDataUrl,
+          payload,
+          backgroundDataUrl,
+          prioritizedDetails,
+        });
+      } catch (error) {
+        qaResult = null;
+        qaError = error instanceof Error ? error.message : "Unknown QA failure";
+      }
+    } else {
+      qaError = "QA unavailable because no OpenAI audit adapter is configured.";
     }
 
     let correctionApplied = false;
 
     if (qaResult && !qaResult.pass) {
-      const correctionImageInputs = [await inputToUploadable(generatedImageDataUrl, "generated-candidate"), ...imageInputs];
+      const correctionImageInputs = [{ name: "generated-candidate", dataUrl: generatedImageDataUrl }, ...imageInputs];
 
-      const correctionResponse: Awaited<ReturnType<typeof client.images.edit>> = await client.images.edit({
-        model: imageModel,
-        image: correctionImageInputs,
+      const correctedImage = await generateWithSelectedModel({
+        selectedModel,
+        client,
+        payload,
         prompt: buildCorrectionEditPrompt({
           payload,
           codexGuidance,
           qa: qaResult,
         }),
-        size: getOutputSize(payload.aspectRatio),
-        quality: payload.quality,
-        background: "auto",
+        imageReferences: correctionImageInputs,
       });
-
-      const correctedImage: any = correctionResponse.data?.[0];
-      if (correctedImage?.b64_json) {
-        correctionApplied = true;
-        editedImage = {
-          b64_json: correctedImage.b64_json,
-          revised_prompt: correctedImage.revised_prompt ?? undefined,
-        };
-      }
+      correctionApplied = true;
+      editedImage = correctedImage;
     }
 
     let finalQaResult = qaResult;
     let finalQaError = qaError;
 
-    if (correctionApplied) {
+    if (correctionApplied && client) {
       const correctedImageDataUrl = `data:image/png;base64,${editedImage.b64_json}`;
 
       try {
@@ -995,44 +1127,42 @@ export async function POST(request: Request) {
       }
 
       if (finalQaResult && !finalQaResult.pass && hasCriticalIdentityFailures(finalQaResult)) {
-        const hardRepairInputs = [await inputToUploadable(correctedImageDataUrl, "hard-repair-candidate"), ...imageInputs];
+        const hardRepairInputs = [{ name: "hard-repair-candidate", dataUrl: correctedImageDataUrl }, ...imageInputs];
 
-        const hardRepairResponse: Awaited<ReturnType<typeof client.images.edit>> = await client.images.edit({
-          model: imageModel,
-          image: hardRepairInputs,
+        const hardRepairedImage = await generateWithSelectedModel({
+          selectedModel,
+          client,
+          payload,
           prompt: buildHardBlockerRepairPrompt({
             payload,
             codexGuidance,
             qa: finalQaResult,
           }),
-          size: getOutputSize(payload.aspectRatio),
-          quality: payload.quality,
-          background: "auto",
+          imageReferences: hardRepairInputs,
         });
+        editedImage = {
+          b64_json: hardRepairedImage.b64_json,
+          revised_prompt: hardRepairedImage.revised_prompt ?? editedImage.revised_prompt,
+        };
 
-        const hardRepairedImage: any = hardRepairResponse.data?.[0];
-        if (hardRepairedImage?.b64_json) {
-          editedImage = {
-            b64_json: hardRepairedImage.b64_json,
-            revised_prompt: hardRepairedImage.revised_prompt ?? editedImage.revised_prompt,
-          };
-
-          const hardRepairedImageDataUrl = `data:image/png;base64,${editedImage.b64_json}`;
-          try {
-            finalQaResult = await runQualityQaCheck({
-              client,
-              generatedImageDataUrl: hardRepairedImageDataUrl,
-              payload,
-              backgroundDataUrl,
-              prioritizedDetails,
-            });
-            finalQaError = null;
-          } catch (error) {
-            finalQaResult = null;
-            finalQaError = error instanceof Error ? error.message : "Unknown QA failure";
-          }
+        const hardRepairedImageDataUrl = `data:image/png;base64,${editedImage.b64_json}`;
+        try {
+          finalQaResult = await runQualityQaCheck({
+            client,
+            generatedImageDataUrl: hardRepairedImageDataUrl,
+            payload,
+            backgroundDataUrl,
+            prioritizedDetails,
+          });
+          finalQaError = null;
+        } catch (error) {
+          finalQaResult = null;
+          finalQaError = error instanceof Error ? error.message : "Unknown QA failure";
         }
       }
+    } else if (correctionApplied && !client) {
+      finalQaResult = null;
+      finalQaError = "QA unavailable because no OpenAI audit adapter is configured.";
     }
 
     const finalImage = editedImage;
@@ -1046,7 +1176,7 @@ export async function POST(request: Request) {
     return NextResponse.json({
       imageDataUrl: `data:image/png;base64,${finalImage.b64_json}`,
       revisedPrompt: finalImage.revised_prompt || "",
-      model: imageModel,
+      model: selectedModel.label,
       size: getOutputSize(payload.aspectRatio),
       quality: payload.quality,
       correctionApplied,

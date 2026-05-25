@@ -57,7 +57,8 @@ This repo is especially relevant for:
 - local managed-file storage for visual assets
 - local workspace persistence plus backup
 - role-aware backend prompt construction
-- model-agnostic generation architecture with an OpenAI adapter used for current testing
+- model-agnostic generation architecture with multiple provider adapters
+- selectable image models in the UI when compatible provider keys are configured
 - QA audit and correction flow for generated outputs
 
 ## Product Design Approach
@@ -125,7 +126,7 @@ The app is designed around the idea that details matter:
 - outfit logic
 - silhouette consistency
 
-This is especially important for collectible and character-driven brands where “close enough” usually fails.
+This is especially important for collectible and character-driven brands where "close enough" usually fails.
 
 ### 5. Local-First Asset Handling
 
@@ -140,7 +141,7 @@ That improves:
 
 ### 6. Product Thinking Over Demo Thinking
 
-This project intentionally moves beyond “AI demo app” design.
+This project intentionally moves beyond "AI demo app" design.
 
 Key UX considerations:
 
@@ -156,7 +157,7 @@ Key UX considerations:
 - React
 - TypeScript
 - Tailwind CSS
-- OpenAI API for the current adapter
+- OpenAI and Google Gemini adapters for current testing
 - local filesystem persistence via Next.js route handlers
 - SQLite library metadata management
 
@@ -185,10 +186,12 @@ app/
   api/
     assets/route.ts        # save/delete managed visual assets
     generate/route.ts      # compile prompts, call provider adapter, run QA
+    image-models/route.ts  # discover configured image models for the UI
     library/route.ts       # load/save SQLite-backed library metadata
     workspace/route.ts     # load/save session state
   page.tsx                 # main product UI
 lib/
+  image-models.ts          # provider/model registry
   library-db.ts            # SQLite library access
 public/
   managed-library/assets/  # app-managed saved image files (gitignored)
@@ -203,7 +206,7 @@ ARCHITECTURE.md            # system overview and diagrams
 
 - Node.js
 - npm
-- an OpenAI API key for the current adapter
+- at least one compatible image-provider API key
 
 ### Setup
 
@@ -218,7 +221,10 @@ npm install
 ```env
 OPENAI_API_KEY=your_api_key_here
 OPENAI_TEXT_MODEL=gpt-5.5
+GEMINI_API_KEY=your_key_here
 ```
+
+You only need the keys for the providers you want to use. The app detects available image models from configured provider keys and lets you choose between them in the UI.
 
 3. Start the app:
 
@@ -242,14 +248,15 @@ What is already strong:
 - structured prompt assembly
 - reusable reference and preset systems
 - thoughtful UX iteration around asset scale and generation flow
+- multi-provider image model selection
 
 What still needs hardening:
 
-- deeper model-agnostic provider adapter support
 - stronger identity-fidelity enforcement across image backends
 - export/import backups
 - broken-file health checks
 - richer debugging visibility into generation payloads and QA results
+- deeper provider-specific QA and repair logic
 
 ## Why This Matters For AI Product Work
 
@@ -282,4 +289,4 @@ Goal: evolve from a prompt-based tool into a fuller AI-assisted content producti
 - Made using the GVC Builder Kit
 - Personal-use project
 - Not officially approved or endorsed by Good Vibes Club
-- Respect the original kit’s usage terms and visible credit requirements
+- Respect the original kit's usage terms and visible credit requirements
