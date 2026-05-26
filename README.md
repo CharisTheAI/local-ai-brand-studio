@@ -286,7 +286,7 @@ Goal: evolve from a prompt-based tool into a fuller AI-assisted content producti
 
 ## Credits And Usage Notes
 
-- Made using the GVC Builder Kit
+- Made using the GVC Builder Kit https://github.com/brydisanto/gvc-builder-kit
 - Personal-use project
 - Not officially approved or endorsed by Good Vibes Club
 - Respect the original kit's usage terms and visible credit requirements
