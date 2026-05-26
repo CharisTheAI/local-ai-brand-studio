@@ -40,7 +40,6 @@ type GeneratePayload = {
   scenePrompt: string;
   promptStarterText?: string;
   posePrompt: string;
-  posePresetText?: string;
   traitPrompt: string;
   negativePrompt: string;
   backgroundTitle?: string;
@@ -61,7 +60,7 @@ type QualityQaResult = {
     nosePresent: boolean;
     extraFacialGeometry: boolean;
     mouthDrift: boolean;
-    glassesAlignmentDrift: boolean;
+    eyeRegionAlignmentDrift: boolean;
     headNeckProportionDrift: boolean;
     outfitConstructionDrift: boolean;
     fiveFingers: boolean;
@@ -594,7 +593,6 @@ function buildGenerationPrompt(payload: GeneratePayload, codexGuidance: string) 
       : "",
     `Camera framing: ${payload.cameraFraming}.`,
     `Scene request: ${payload.scenePrompt}.`,
-    payload.posePresetText ? `Pose preset guidance: ${payload.posePresetText}.` : "",
     `Pose and action: ${payload.posePrompt}.`,
     payload.traitPrompt ? `Traits and must-keep details: ${payload.traitPrompt}.` : "",
     `Avoid these outcomes: ${payload.negativePrompt}.`,
@@ -698,7 +696,7 @@ async function runQualityQaCheck(args: {
         "Treat the face as a minimal graphic system, not a realistic sculpted face.",
         "That means there must be no nose geometry of any kind, no protrusion or bump between the canonical eye region and the mouth, and no extra sculpted face feature there at all.",
         "Return JSON only with this shape:",
-        '{"pass":boolean,"issues":string[],"correctionPrompt":string,"summary":string,"failures":{"nosePresent":boolean,"extraFacialGeometry":boolean,"mouthDrift":boolean,"glassesAlignmentDrift":boolean,"headNeckProportionDrift":boolean,"outfitConstructionDrift":boolean,"fiveFingers":boolean,"bodyProportionDrift":boolean,"silhouetteDrift":boolean,"shirtGraphicDrift":boolean,"shoeLogoDrift":boolean,"paletteDrift":boolean}}',
+        '{"pass":boolean,"issues":string[],"correctionPrompt":string,"summary":string,"failures":{"nosePresent":boolean,"extraFacialGeometry":boolean,"mouthDrift":boolean,"eyeRegionAlignmentDrift":boolean,"headNeckProportionDrift":boolean,"outfitConstructionDrift":boolean,"fiveFingers":boolean,"bodyProportionDrift":boolean,"silhouetteDrift":boolean,"shirtGraphicDrift":boolean,"shoeLogoDrift":boolean,"paletteDrift":boolean}}',
         "Fail the image if you detect any hard identity blocker: added nose, nose-like bump, any central protrusion between the canonical eye region and the mouth, any extra sculpted facial feature, extra facial geometry, changed mouth placement, changed mouth thickness, changed mouth style, changed face design, wrong or invented expression, wrong eye or eyewear placement, wrong eye or eyewear alignment relative to the face, wrong head-to-neck relationship, wrong outfit construction if it changes the character read, stretched body proportions, wrong silhouette, five fingers, six fingers, malformed hands, duplicate arms, duplicate hands, ghost limbs, or broken wrists.",
         "Also fail the image for duplicate arms, duplicate hands, ghost limbs, broken wrists, garbled shirt text, garbled shoe marks, outfit drift, extra faint facial lines suggesting a second mouth, any cheek line, any lip edge, any smile crease, or any nose-like facial bump not present in the reference.",
         "Also fail if the scene looks generically AI-smoothed, lighting is incoherent, or material response is muddy.",
@@ -798,7 +796,7 @@ async function runQualityQaCheck(args: {
                 nosePresent: { type: "boolean" },
                 extraFacialGeometry: { type: "boolean" },
                 mouthDrift: { type: "boolean" },
-                glassesAlignmentDrift: { type: "boolean" },
+                eyeRegionAlignmentDrift: { type: "boolean" },
                 headNeckProportionDrift: { type: "boolean" },
                 outfitConstructionDrift: { type: "boolean" },
                 fiveFingers: { type: "boolean" },
@@ -812,7 +810,7 @@ async function runQualityQaCheck(args: {
                 "nosePresent",
                 "extraFacialGeometry",
                 "mouthDrift",
-                "glassesAlignmentDrift",
+                "eyeRegionAlignmentDrift",
                 "headNeckProportionDrift",
                 "outfitConstructionDrift",
                 "fiveFingers",
@@ -849,7 +847,7 @@ async function runQualityQaCheck(args: {
             nosePresent: Boolean(parsed.failures.nosePresent),
             extraFacialGeometry: Boolean(parsed.failures.extraFacialGeometry),
             mouthDrift: Boolean(parsed.failures.mouthDrift),
-            glassesAlignmentDrift: Boolean(parsed.failures.glassesAlignmentDrift),
+            eyeRegionAlignmentDrift: Boolean(parsed.failures.eyeRegionAlignmentDrift),
             headNeckProportionDrift: Boolean(parsed.failures.headNeckProportionDrift),
             outfitConstructionDrift: Boolean(parsed.failures.outfitConstructionDrift),
             fiveFingers: Boolean(parsed.failures.fiveFingers),
@@ -863,7 +861,7 @@ async function runQualityQaCheck(args: {
             nosePresent: false,
             extraFacialGeometry: false,
             mouthDrift: false,
-            glassesAlignmentDrift: false,
+            eyeRegionAlignmentDrift: false,
             headNeckProportionDrift: false,
             outfitConstructionDrift: false,
             fiveFingers: false,
@@ -876,69 +874,12 @@ async function runQualityQaCheck(args: {
   };
 }
 
-function buildCorrectionEditPrompt(args: {
-  payload: GeneratePayload;
-  codexGuidance: string;
-  qa: QualityQaResult;
-}) {
-  const { payload, codexGuidance, qa } = args;
-
-  const issuesText = qa.issues.join("; ") || qa.summary || "general character fidelity drift";
-
-  return [
-    `Revise this ${payload.aspectRatio} image to correct the detected fidelity problems.`,
-    "This is a strict surgical repair pass, not a creative reinterpretation pass.",
-    "Preserve the successful parts of the current image and the overall scene, but directly rewrite the broken identity and quality details.",
-    "Do not make new creative changes unrelated to the audit findings.",
-    `Detected issues to fix only: ${issuesText}.`,
-    qa.correctionPrompt,
-    buildCharacterTruthLayer(payload),
-    buildSceneReplacementLayer(payload),
-    buildSceneIntegrationLayer(),
-    QUALITY_MATTERS_GUIDANCE,
-    ANATOMY_GUARDRAILS,
-    GRAPHIC_PLACEMENT_GUIDANCE,
-    codexGuidance ? `Project guidance to honor: ${codexGuidance}` : "",
-    "Correction priority order:",
-    "1. Face system fidelity: no nose, no extra facial marks, correct mouth placement/shape, correct glasses alignment, correct head/neck relationship.",
-    "2. Exactly four fingers on each visible hand.",
-    "3. Silhouette, body proportions, and exact character construction.",
-    "4. Outfit construction if it changes the character read.",
-    "5. Shirt graphic placement, shirt logo layout, and apparel fidelity.",
-    "6. Shoe construction, shoe logo placement, and footwear branding fidelity.",
-    "7. Palette fidelity and color batch discipline.",
-    "Do not soften, stretch, compress, or re-style the character while repairing the image.",
-    "Keep the same scene, same environment, same general camera, and same staging unless a flagged issue requires a local correction.",
-    "Do not add a nose.",
-    "Do not change mouth placement or mouth style.",
-    "Keep the mouth as one single minimal black drawn line only.",
-    "Remove any extra cheek line, smile crease, lip edge, second mouth line, or nose-like bump.",
-    "Keep eyes only as the canonical glasses, shades, black lines, or dots from the reference. Do not invent extra eye geometry.",
-    "Restore exact glasses placement and exact alignment of the glasses relative to the face and eyes from the canonical reference.",
-    "Restore the exact head-to-neck relationship and do not widen, narrow, stretch, or compress the head or neck.",
-    "Do not change the approved expression language unless it already matches the canonical reference.",
-    "Keep exactly four total digits on each visible hand. Five visible digits is unacceptable.",
-    "Remove duplicate arms, duplicate hands, ghost limbs, and broken wrists.",
-    "If a clean four-finger hand cannot be preserved, hide more of the hand instead of showing five digits.",
-    "Correct shirt graphics, slogans, chest logos, shirt layout, and accessory placement if they drifted.",
-    "Correct shoe logos, shoe marks, shoe placement, and shoe construction if they drifted.",
-    "Remove any faint extra mouth line or secondary facial mark that was not present in the reference.",
-    "Correct character proportions and silhouette if they stretched, compressed, widened, narrowed, or otherwise drifted from the canonical reference.",
-    "If the silhouette is wrong, prioritize fixing the silhouette before shirt text fidelity.",
-    "If the shoe logo placement is wrong, redraw the shoe branding in the correct location rather than leaving a near-miss.",
-    "If the palette drifted, restore the canonical character colors before adding scene warmth.",
-    "If apparel text cannot be rendered legibly, keep a clean simplified faithful emblem in the exact correct placement rather than inventing broken text.",
-    "Keep lighting, material response, and palette premium and coherent.",
-    "Do not flatten the render into a generic AI look.",
-  ].join(" ");
-}
-
 function hasCriticalIdentityFailures(qa: QualityQaResult) {
   return (
     qa.failures.nosePresent ||
     qa.failures.extraFacialGeometry ||
     qa.failures.mouthDrift ||
-    qa.failures.glassesAlignmentDrift ||
+    qa.failures.eyeRegionAlignmentDrift ||
     qa.failures.headNeckProportionDrift ||
     qa.failures.outfitConstructionDrift ||
     qa.failures.fiveFingers ||
@@ -1087,82 +1028,28 @@ export async function POST(request: Request) {
     }
 
     let correctionApplied = false;
+    let finalQaResult = qaResult;
+    let finalQaError = qaError;
 
-    if (qaResult && !qaResult.pass) {
-      const correctionImageInputs = [{ name: "generated-candidate", dataUrl: generatedImageDataUrl }, ...imageInputs];
+    if (qaResult && !qaResult.pass && hasCriticalIdentityFailures(qaResult)) {
+      const hardRepairInputs = [{ name: "hard-repair-candidate", dataUrl: generatedImageDataUrl }, ...imageInputs];
 
-      const correctedImage = await generateWithSelectedModel({
+      const hardRepairedImage = await generateWithSelectedModel({
         selectedModel,
         client,
         payload,
-        prompt: buildCorrectionEditPrompt({
+        prompt: buildHardBlockerRepairPrompt({
           payload,
           codexGuidance,
           qa: qaResult,
         }),
-        imageReferences: correctionImageInputs,
+        imageReferences: hardRepairInputs,
       });
+      editedImage = {
+        b64_json: hardRepairedImage.b64_json,
+        revised_prompt: hardRepairedImage.revised_prompt ?? editedImage.revised_prompt,
+      };
       correctionApplied = true;
-      editedImage = correctedImage;
-    }
-
-    let finalQaResult = qaResult;
-    let finalQaError = qaError;
-
-    if (correctionApplied && client) {
-      const correctedImageDataUrl = `data:image/png;base64,${editedImage.b64_json}`;
-
-      try {
-        finalQaResult = await runQualityQaCheck({
-          client,
-          generatedImageDataUrl: correctedImageDataUrl,
-          payload,
-          backgroundDataUrl,
-          prioritizedDetails,
-        });
-        finalQaError = null;
-      } catch (error) {
-        finalQaResult = null;
-        finalQaError = error instanceof Error ? error.message : "Unknown QA failure";
-      }
-
-      if (finalQaResult && !finalQaResult.pass && hasCriticalIdentityFailures(finalQaResult)) {
-        const hardRepairInputs = [{ name: "hard-repair-candidate", dataUrl: correctedImageDataUrl }, ...imageInputs];
-
-        const hardRepairedImage = await generateWithSelectedModel({
-          selectedModel,
-          client,
-          payload,
-          prompt: buildHardBlockerRepairPrompt({
-            payload,
-            codexGuidance,
-            qa: finalQaResult,
-          }),
-          imageReferences: hardRepairInputs,
-        });
-        editedImage = {
-          b64_json: hardRepairedImage.b64_json,
-          revised_prompt: hardRepairedImage.revised_prompt ?? editedImage.revised_prompt,
-        };
-
-        const hardRepairedImageDataUrl = `data:image/png;base64,${editedImage.b64_json}`;
-        try {
-          finalQaResult = await runQualityQaCheck({
-            client,
-            generatedImageDataUrl: hardRepairedImageDataUrl,
-            payload,
-            backgroundDataUrl,
-            prioritizedDetails,
-          });
-          finalQaError = null;
-        } catch (error) {
-          finalQaResult = null;
-          finalQaError = error instanceof Error ? error.message : "Unknown QA failure";
-        }
-      }
-    } else if (correctionApplied && !client) {
-      finalQaResult = null;
-      finalQaError = "QA unavailable because no OpenAI audit adapter is configured.";
     }
 
     const finalImage = editedImage;

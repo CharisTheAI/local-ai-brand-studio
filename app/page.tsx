@@ -387,7 +387,7 @@ function coerceWorkspace(
     aspectRatio:
       saved?.aspectRatio === "1:1" || saved?.aspectRatio === "16:9" || saved?.aspectRatio === "9:16"
         ? saved.aspectRatio
-        : "1:1",
+        : "16:9",
     quality:
       saved?.quality === "low" || saved?.quality === "medium" || saved?.quality === "high"
         ? saved.quality
@@ -451,7 +451,7 @@ export default function Home() {
   const [referenceCategoryFilter, setReferenceCategoryFilter] = useState<string>("");
   const [referenceCollectionFilterId, setReferenceCollectionFilterId] = useState<string>("");
   const [referenceSort, setReferenceSort] = useState<AssetSortMode>("newest");
-  const [aspectRatio, setAspectRatio] = useState<AspectRatio>("1:1");
+  const [aspectRatio, setAspectRatio] = useState<AspectRatio>("16:9");
   const [quality, setQuality] = useState<RenderQuality>("medium");
   const [scenePrompt, setScenePrompt] = useState("");
   const [posePrompt, setPosePrompt] = useState("");
@@ -1203,7 +1203,6 @@ export default function Home() {
           scenePrompt,
           promptStarterText: selectedPromptStarter?.text || "",
           posePrompt: selectedPosePreset?.text || posePrompt,
-          posePresetText: selectedPosePreset?.text || "",
           traitPrompt: "",
           negativePrompt: DEFAULT_NEGATIVE_PROMPT,
           backgroundTitle: primaryVisualAnchor.title,
@@ -1307,7 +1306,7 @@ export default function Home() {
     setReferenceCategoryFilter("");
     setReferenceCollectionFilterId("");
     setReferenceSort("newest");
-    setAspectRatio("1:1");
+    setAspectRatio("16:9");
     setQuality("medium");
     setScenePrompt("");
     setPosePrompt("");
@@ -1336,7 +1335,7 @@ export default function Home() {
       selectedCharacterSheetIds: [],
       selectedCharacterIds: [],
       selectedVisualReferenceIds: [],
-      aspectRatio: "1:1",
+      aspectRatio: "16:9",
       quality: "medium",
       scenePrompt: "",
       posePrompt: "",
@@ -1412,7 +1411,12 @@ export default function Home() {
         ))}
       </div>
       <div className="mx-auto flex max-w-7xl flex-col gap-6">
-        <section className="hero-panel rounded-[32px] border border-white/10 px-5 py-6 md:px-8">
+        <section className="hero-panel relative overflow-hidden rounded-[32px] border border-white/10 px-5 py-6 md:px-8">
+          <img
+            alt="Gold GVC shaka logo"
+            className="pointer-events-none absolute right-6 top-5 hidden h-auto w-24 opacity-90 md:block lg:right-10 lg:top-6 lg:w-28 xl:w-32"
+            src="/shaka.png"
+          />
           <div>
             <p className="eyebrow">Local Creator Studio</p>
             <h1 className="section-title">GVC Content Studio</h1>
@@ -2350,19 +2354,24 @@ export default function Home() {
                         <span className="tag-chip border-gvc-gold/30 text-gvc-gold">Correction Applied</span>
                       ) : null}
                     </div>
-                    {expandedGeneratedImage.qa?.summary ? (
+                    {expandedGeneratedImage.qaModel ? (
+                      <p className="mt-2 text-white/45">Audit model: {expandedGeneratedImage.qaModel}</p>
+                    ) : null}
+                    {expandedGeneratedImage.qa?.issues?.length ? (
+                      <p className="mt-2 text-white/55">Flagged: {expandedGeneratedImage.qa.issues.join("; ")}</p>
+                    ) : null}
+                    {expandedGeneratedImage.correctionApplied && expandedGeneratedImage.qa?.summary ? (
+                      <p className="mt-2 text-white/75">
+                        Correction Applied: The first image was corrected {expandedGeneratedImage.qa.summary.charAt(0).toLowerCase()}
+                        {expandedGeneratedImage.qa.summary.slice(1)}
+                      </p>
+                    ) : expandedGeneratedImage.qa?.summary ? (
                       <p className="mt-2 text-white/75">{expandedGeneratedImage.qa.summary}</p>
                     ) : (
                       <p className="mt-2 text-white/55">No QA summary was stored for this result.</p>
                     )}
                     {expandedGeneratedImage.qaError ? (
                       <p className="mt-2 text-[#FF6B9D]">QA error: {expandedGeneratedImage.qaError}</p>
-                    ) : null}
-                    {expandedGeneratedImage.qaModel ? (
-                      <p className="mt-2 text-white/45">QA model: {expandedGeneratedImage.qaModel}</p>
-                    ) : null}
-                    {expandedGeneratedImage.qa?.issues?.length ? (
-                      <p className="mt-2 text-white/55">Issues: {expandedGeneratedImage.qa.issues.join("; ")}</p>
                     ) : null}
                   </div>
                 </div>
