@@ -1199,7 +1199,9 @@ export default function Home() {
           tone: "Custom",
           aspectRatio,
           quality,
-          cameraFraming: selectedCameraPreset?.text || "Custom framing",
+          cameraFraming: selectedCameraPreset
+            ? `${selectedCameraPreset.title}: ${selectedCameraPreset.text}`
+            : "Custom framing",
           scenePrompt,
           promptStarterText: selectedPromptStarter?.text || "",
           posePrompt: selectedPosePreset?.text || posePrompt,
@@ -1787,14 +1789,14 @@ export default function Home() {
           </div>
         </section>
 
-        <section className="panel">
+        <section className="panel ready-panel">
           <div className="mb-6">
             <p className="eyebrow">Library Admin</p>
             <h2 className="section-title">Asset Library Manager</h2>
           </div>
 
-            <div className="grid gap-6">
-              <div className="panel-subtle">
+          <div className="grid gap-6">
+            <div className="panel-subtle">
               <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_auto_auto]">
                 <label className="field">
                   <span>Active Collection</span>
@@ -1920,151 +1922,163 @@ export default function Home() {
                 )}
               </div>
             </div>
+          </div>
+        </section>
 
-            <div className="panel-subtle">
-              <div className="mb-4 flex items-center justify-between gap-3">
-                <h3 className="text-lg font-semibold text-white">Saved Visual Assets</h3>
-                <span className="tag-chip">{filteredSavedAssets.length} shown</span>
+        <section className="section-break">
+          <div className="section-break-line" />
+          <div className="section-break-badges" aria-hidden="true">
+            <img alt="" className="section-break-badge section-break-badge-a" src="/library/badges/any_gvc.webp" />
+            <img alt="" className="section-break-badge section-break-badge-b" src="/library/badges/chris_favorite_badge.webp" />
+            <img alt="" className="section-break-badge section-break-badge-c" src="/library/badges/robot_lover.webp" />
+            <img alt="" className="section-break-badge section-break-badge-d" src="/library/badges/science_goggles.webp" />
+            <img alt="" className="section-break-badge section-break-badge-e" src="/library/badges/shower.webp" />
+          </div>
+        </section>
+
+        <section className="panel">
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <h2 className="section-title">Saved Visual Assets</h2>
+            <span className="tag-chip">{filteredSavedAssets.length} shown</span>
+          </div>
+
+          <div className="asset-browser-toolbar">
+            <label className="field asset-search-field">
+              <span>Search Assets</span>
+              <div className="asset-search-input">
+                <Search size={16} />
+                <input
+                  placeholder="Search title or notes"
+                  value={assetSearchQuery}
+                  onChange={(event) => setAssetSearchQuery(event.target.value)}
+                />
               </div>
+            </label>
 
-              <div className="asset-browser-toolbar">
-                <label className="field asset-search-field">
-                  <span>Search Assets</span>
-                  <div className="asset-search-input">
-                    <Search size={16} />
-                    <input
-                      placeholder="Search title or notes"
-                      value={assetSearchQuery}
-                      onChange={(event) => setAssetSearchQuery(event.target.value)}
-                    />
-                  </div>
-                </label>
+            <label className="field">
+              <span>Collection Filter</span>
+              <select value={assetFilterCollectionId} onChange={(event) => setAssetFilterCollectionId(event.target.value)}>
+                <option value="">All Collections</option>
+                {assetCollections.map((collection) => (
+                  <option key={collection.id} value={collection.id}>
+                    {collection.name}
+                  </option>
+                ))}
+              </select>
+            </label>
 
-                <label className="field">
-                  <span>Collection Filter</span>
-                  <select value={assetFilterCollectionId} onChange={(event) => setAssetFilterCollectionId(event.target.value)}>
-                    <option value="">All Collections</option>
-                    {assetCollections.map((collection) => (
-                      <option key={collection.id} value={collection.id}>
-                        {collection.name}
-                      </option>
-                    ))}
-                  </select>
-                </label>
+            <label className="field">
+              <span>Category Filter</span>
+              <select value={assetFilterCategory} onChange={(event) => setAssetFilterCategory(event.target.value)}>
+                <option value="">All Categories</option>
+                {libraryCategories.map((category) => (
+                  <option key={category.value} value={category.value}>
+                    {category.label}
+                  </option>
+                ))}
+              </select>
+            </label>
 
-                <label className="field">
-                  <span>Category Filter</span>
-                  <select value={assetFilterCategory} onChange={(event) => setAssetFilterCategory(event.target.value)}>
-                    <option value="">All Categories</option>
-                    {libraryCategories.map((category) => (
-                      <option key={category.value} value={category.value}>
-                        {category.label}
-                      </option>
-                    ))}
-                  </select>
-                </label>
+            <label className="field">
+              <span>Sort</span>
+              <select value={assetSort} onChange={(event) => setAssetSort(event.target.value as typeof assetSort)}>
+                <option value="newest">Newest</option>
+                <option value="title-asc">Title A-Z</option>
+                <option value="title-desc">Title Z-A</option>
+                <option value="category">Category</option>
+              </select>
+            </label>
+          </div>
 
-                <label className="field">
-                  <span>Sort</span>
-                  <select value={assetSort} onChange={(event) => setAssetSort(event.target.value as typeof assetSort)}>
-                    <option value="newest">Newest</option>
-                    <option value="title-asc">Title A-Z</option>
-                    <option value="title-desc">Title Z-A</option>
-                    <option value="category">Category</option>
-                  </select>
-                </label>
+          <div className="mt-6 grid gap-6">
+            {allSavedAssets.length === 0 ? (
+              <div className="empty-state text-white/65">
+                Your library is empty. Upload assets and classify them to use them in generation.
               </div>
-
-              <div className="mt-6 grid gap-6">
-                {allSavedAssets.length === 0 ? (
-                  <div className="empty-state text-white/65">
-                    Your library is empty. Upload assets and classify them to use them in generation.
-                  </div>
-                ) : filteredSavedAssets.length === 0 ? (
-                  <div className="empty-state text-white/65">
-                    No saved assets match your current search and filters.
-                  </div>
-                ) : (
-                  <div className="asset-grid">
-                    {filteredSavedAssets.map((asset) => (
-                      <article key={asset.id} className="asset-browser-card">
-                        <div className="asset-browser-thumb">
-                          <img alt={asset.title} className="asset-browser-image" src={asset.src} />
-                        </div>
-                        <div className="asset-browser-body">
-                          <strong className="asset-browser-title">{asset.title}</strong>
-                          <span className="asset-browser-collection">{asset.collectionName}</span>
-                          <div className="flex flex-wrap gap-2">
-                            <span className="tag-chip">{libraryCategories.find((entry) => entry.value === asset.category)?.label || asset.category}</span>
-                          </div>
-                          <p className="asset-browser-notes">{asset.notes || "No notes yet."}</p>
-                          <div className="flex gap-2">
-                            <button className="mini-button w-fit" onClick={() => openAssetEditor(asset)} type="button">
-                              <Edit3 size={14} />
-                              Edit
-                            </button>
-                            <button className="mini-button mini-button-danger w-fit" onClick={() => deleteCollectionAsset(asset.id)} type="button">
-                              <Trash2 size={14} />
-                              Delete
-                            </button>
-                          </div>
-                        </div>
-                      </article>
-                    ))}
-                  </div>
-                )}
+            ) : filteredSavedAssets.length === 0 ? (
+              <div className="empty-state text-white/65">
+                No saved assets match your current search and filters.
               </div>
-            </div>
-
-            <div>
-              <section className="section-break">
-                <div className="section-break-line" />
-                <div className="section-break-badges" aria-hidden="true">
-                  <img alt="" className="section-break-badge section-break-badge-a" src="/library/badges/any_gvc.webp" />
-                  <img alt="" className="section-break-badge section-break-badge-b" src="/library/badges/chris_favorite_badge.webp" />
-                  <img alt="" className="section-break-badge section-break-badge-c" src="/library/badges/robot_lover.webp" />
-                  <img alt="" className="section-break-badge section-break-badge-d" src="/library/badges/science_goggles.webp" />
-                  <img alt="" className="section-break-badge section-break-badge-e" src="/library/badges/shower.webp" />
-                </div>
-              </section>
-
-              <div className="panel-subtle">
-                <div className="mb-4 flex items-center justify-between gap-3">
-                  <h3 className="text-lg font-semibold text-white">Saved Text Assets</h3>
-                  <div className="flex flex-wrap gap-2">
-                    <span className="tag-chip">{filteredTextAssets.length} shown</span>
-                    <button className="mini-button" onClick={() => addPreset("prompt-starters")} type="button">
-                      <Plus size={14} />
-                      Add Prompt
-                    </button>
-                    <button className="mini-button" onClick={() => addPreset("camera-framing")} type="button">
-                      <Plus size={14} />
-                      Add Camera
-                    </button>
-                    <button className="mini-button" onClick={() => addPreset("pose-action")} type="button">
-                      <Plus size={14} />
-                      Add Pose
-                    </button>
-                  </div>
-                </div>
-
-                {pendingTextAssets.length > 0 ? (
-                  <div className="mb-6">
-                    <div className="mb-4 flex items-center justify-between gap-3">
-                      <h4 className="text-base font-semibold text-white">Pending Text Assets</h4>
-                      <span className="tag-chip">{pendingTextAssets.length} pending</span>
+            ) : (
+              <div className="asset-grid">
+                {filteredSavedAssets.map((asset) => (
+                  <article key={asset.id} className="asset-browser-card">
+                    <div className="asset-browser-thumb">
+                      <img alt={asset.title} className="asset-browser-image" src={asset.src} />
                     </div>
-                    <div className="grid gap-4">
-                      {pendingTextAssets.map((asset) => (
-                        <div key={asset.id} className="pending-text-card">
-                          <div className="pending-text-fields">
-                            <label className="field field-compact">
-                              <span>Title</span>
-                              <input
-                                value={asset.title}
-                                onChange={(event) => updatePendingTextAsset(asset.id, { title: event.target.value })}
-                              />
-                            </label>
+                    <div className="asset-browser-body">
+                      <strong className="asset-browser-title">{asset.title}</strong>
+                      <span className="asset-browser-collection">{asset.collectionName}</span>
+                      <div className="flex flex-wrap gap-2">
+                        <span className="tag-chip">{libraryCategories.find((entry) => entry.value === asset.category)?.label || asset.category}</span>
+                      </div>
+                      <p className="asset-browser-notes">{asset.notes || "No notes yet."}</p>
+                      <div className="flex gap-2">
+                        <button className="mini-button w-fit" onClick={() => openAssetEditor(asset)} type="button">
+                          <Edit3 size={14} />
+                          Edit
+                        </button>
+                        <button className="mini-button mini-button-danger w-fit" onClick={() => deleteCollectionAsset(asset.id)} type="button">
+                          <Trash2 size={14} />
+                          Delete
+                        </button>
+                      </div>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            )}
+          </div>
+        </section>
+
+        <section className="section-break">
+          <div className="section-break-line" />
+          <div className="section-break-badges" aria-hidden="true">
+            <img alt="" className="section-break-badge section-break-badge-a" src="/library/badges/any_gvc.webp" />
+            <img alt="" className="section-break-badge section-break-badge-b" src="/library/badges/chris_favorite_badge.webp" />
+            <img alt="" className="section-break-badge section-break-badge-c" src="/library/badges/robot_lover.webp" />
+            <img alt="" className="section-break-badge section-break-badge-d" src="/library/badges/science_goggles.webp" />
+            <img alt="" className="section-break-badge section-break-badge-e" src="/library/badges/shower.webp" />
+          </div>
+        </section>
+
+        <section className="panel">
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <h2 className="section-title">Saved Text Assets</h2>
+            <div className="flex flex-wrap gap-2">
+              <span className="tag-chip">{filteredTextAssets.length} shown</span>
+              <button className="mini-button" onClick={() => addPreset("prompt-starters")} type="button">
+                <Plus size={14} />
+                Add Prompt
+              </button>
+              <button className="mini-button" onClick={() => addPreset("camera-framing")} type="button">
+                <Plus size={14} />
+                Add Camera
+              </button>
+              <button className="mini-button" onClick={() => addPreset("pose-action")} type="button">
+                <Plus size={14} />
+                Add Pose
+              </button>
+            </div>
+          </div>
+
+          {pendingTextAssets.length > 0 ? (
+            <div className="mb-6">
+              <div className="mb-4 flex items-center justify-between gap-3">
+                <h4 className="text-base font-semibold text-white">Pending Text Assets</h4>
+                <span className="tag-chip">{pendingTextAssets.length} pending</span>
+              </div>
+              <div className="grid gap-4">
+                {pendingTextAssets.map((asset) => (
+                  <div key={asset.id} className="pending-text-card">
+                    <div className="pending-text-fields">
+                      <label className="field field-compact">
+                        <span>Title</span>
+                        <input
+                          value={asset.title}
+                          onChange={(event) => updatePendingTextAsset(asset.id, { title: event.target.value })}
+                        />
+                      </label>
 
                             <label className="field field-compact">
                               <span>Type</span>
@@ -2145,39 +2159,36 @@ export default function Home() {
                   </label>
                 </div>
 
-                <div className="mt-6 grid gap-6">
-                  {allTextAssets.length === 0 ? (
-                    <div className="empty-state text-white/65">No text assets saved yet.</div>
-                  ) : filteredTextAssets.length === 0 ? (
-                    <div className="empty-state text-white/65">No text assets match your current search and filters.</div>
-                  ) : (
-                    <div className="asset-grid">
-                      {filteredTextAssets.map((asset) => (
-                        <article key={asset.id} className="asset-browser-card text-asset-card">
-                          <div className="asset-browser-body">
-                            <strong className="asset-browser-title">{asset.title}</strong>
-                            <div className="flex flex-wrap gap-2">
-                              <span className="tag-chip">{asset.kindLabel}</span>
-                            </div>
-                            <p className="asset-browser-notes">{asset.text || "No text yet."}</p>
-                            <div className="flex gap-2">
-                              <button className="mini-button w-fit" onClick={() => openTextEditor(asset)} type="button">
-                                <Edit3 size={14} />
-                                Edit
-                              </button>
-                              <button className="mini-button mini-button-danger w-fit" onClick={() => deletePreset(asset.kind, asset.id)} type="button">
-                                <Trash2 size={14} />
-                                Delete
-                              </button>
-                            </div>
-                          </div>
-                        </article>
-                      ))}
+          <div className="mt-6 grid gap-6">
+            {allTextAssets.length === 0 ? (
+              <div className="empty-state text-white/65">No text assets saved yet.</div>
+            ) : filteredTextAssets.length === 0 ? (
+              <div className="empty-state text-white/65">No text assets match your current search and filters.</div>
+            ) : (
+              <div className="asset-grid">
+                {filteredTextAssets.map((asset) => (
+                  <article key={asset.id} className="asset-browser-card text-asset-card">
+                    <div className="asset-browser-body">
+                      <strong className="asset-browser-title">{asset.title}</strong>
+                      <div className="flex flex-wrap gap-2">
+                        <span className="tag-chip">{asset.kindLabel}</span>
+                      </div>
+                      <p className="asset-browser-notes">{asset.text || "No text yet."}</p>
+                      <div className="flex gap-2">
+                        <button className="mini-button w-fit" onClick={() => openTextEditor(asset)} type="button">
+                          <Edit3 size={14} />
+                          Edit
+                        </button>
+                        <button className="mini-button mini-button-danger w-fit" onClick={() => deletePreset(asset.kind, asset.id)} type="button">
+                          <Trash2 size={14} />
+                          Delete
+                        </button>
+                      </div>
                     </div>
-                  )}
-                </div>
+                  </article>
+                ))}
               </div>
-            </div>
+            )}
           </div>
         </section>
 

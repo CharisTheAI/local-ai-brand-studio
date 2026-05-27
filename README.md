@@ -8,6 +8,10 @@ Built using the GVC Builder Kit and shaped around a simple idea:
 
 > AI generation becomes much more useful when creative systems are treated like production workflows instead of one-off prompts.
 
+Current documented version: `0.5.0`
+
+Release notes: [CHANGELOG.md](./CHANGELOG.md)
+
 ## Why This Exists
 
 Most AI image tools are optimized for novelty.
@@ -31,60 +35,172 @@ That becomes a real problem for:
 
 Because "close enough" usually fails.
 
-`local-ai-brand-studio` was built to explore a different direction:
+`local-ai-brand-studio` explores a different direction:
 
 > structured, reusable, local-first AI-assisted creative workflows.
 
-## Core Philosophy
+## Quick Start
 
-### 1. Creative systems matter more than individual prompts
+If you just want to get the app running locally, start here.
 
-Prompts are temporary.
+### Before you begin
 
-Systems scale.
+Make sure you have:
 
-This project is designed to build reusable creative infrastructure:
+- Node.js
+- npm
+- at least one supported image provider account
+- a valid API key for the provider you want to use
 
-- asset libraries
-- prompt systems
-- scene-building workflows
-- character rules
-- reusable framing and pose presets
-- QA audit and repair behavior
-- persistent local creative state
+Current supported providers in this repo:
 
-### 2. Models will continue to change
+- OpenAI
+- Google Gemini
 
-The workflow should survive model changes.
+This repo is designed to support future adapter expansion, but local-model adapters are not currently documented as an out-of-the-box setup path in this build.
 
-This app is intentionally model-aware at the adapter layer and model-agnostic at the workflow layer.
+There are no other installable app dependencies beyond `npm install` for this repo itself.
 
-Today it supports multiple provider adapters in the same UI, and it is designed so future adapters can be added without rebuilding the whole product around one vendor.
+What you do need beyond `npm install` is provider access:
 
-The goal is not to lock creativity to a single model.
+- for OpenAI, create an API key in the OpenAI platform
+- for Gemini, create an API key in Google AI Studio
 
-The goal is to preserve the workflow.
+Official references:
 
-### 3. Local-first ownership matters
+- OpenAI API quickstart: [platform.openai.com/docs/quickstart/authentication](https://platform.openai.com/docs/quickstart/authentication)
+- Gemini API keys: [ai.google.dev/gemini-api/docs/api-key](https://ai.google.dev/gemini-api/docs/api-key)
 
-Creative assets should stay under the creator's control.
+### 1. Clone the repository
 
-This project keeps, whenever possible:
+```bash
+git clone https://github.com/CharisTheAI/local-ai-brand-studio.git
+cd local-ai-brand-studio
+```
 
-- visual references
-- workspace state
-- reusable assets
-- generation systems
+### 2. Install app dependencies
 
-stored locally on the creator's machine.
+This installs the app's JavaScript and build dependencies:
 
-That improves:
+```bash
+npm install
+```
 
-- control
-- reliability
-- image preservation
-- workflow durability
-- long-term maintainability
+After that, the remaining setup is provider access, not additional local package installation.
+
+### 3. Create `.env.local`
+
+Create a file named `.env.local` in the project root.
+
+Example:
+
+```env
+OPENAI_API_KEY=your_openai_key_here
+OPENAI_TEXT_MODEL=gpt-5.5
+GEMINI_API_KEY=your_gemini_key_here
+```
+
+You only need keys for the providers you actually want to use.
+
+These examples are for the providers currently supported in this repo today.
+
+### 4. Start the app
+
+For development and active UI/code work:
+
+```bash
+npm run dev
+```
+
+Then open:
+
+```text
+http://localhost:3000
+```
+
+## Best Way To Run It For Real Local Use
+
+If you are actually using the app for creative work, use the production server instead of the dev server.
+
+### Development mode
+
+```bash
+npm run dev
+```
+
+Use this when:
+
+- changing UI/code
+- iterating quickly
+- debugging frontend behavior
+
+Be aware:
+
+- dev mode can be less stable
+- hot reload and CSS loading can occasionally get flaky
+
+### Stable local use
+
+```bash
+npm run build
+npm run start
+```
+
+Use this when:
+
+- actually generating content
+- reviewing results
+- managing your asset library over longer sessions
+
+If you change the code while using `npm run start`, rebuild before launching again.
+
+## Requirements
+
+- Node.js
+- npm
+- at least one supported image-provider API key or provider account with valid access
+
+## Provider Setup
+
+The app is workflow-first and provider-flexible.
+
+Today the UI can detect configured providers and expose available image models automatically.
+
+Current provider support in this build includes:
+
+- OpenAI image adapters
+- Google Gemini image adapters
+
+This README does not currently document a local-model adapter setup path because that is not yet exposed as a supported out-of-the-box option in this repo.
+
+How it works:
+
+- if a provider key is present in `.env.local`, that provider's supported image models can appear in the `Image Model` dropdown
+- if a provider key is missing, those models will not appear
+- you do not need to configure providers you are not using
+
+Example `.env.local`:
+
+```env
+OPENAI_API_KEY=your_openai_key_here
+OPENAI_TEXT_MODEL=gpt-5.5
+GEMINI_API_KEY=your_gemini_key_here
+```
+
+## First Launch Workflow
+
+Once the app is running, the easiest way to understand it is:
+
+1. Open the app locally
+2. Choose an `Image Model`
+3. Go to `Asset Library Manager`
+4. Upload character sheets, character references, backgrounds, scenes, or detail references
+5. Save those assets into the local library
+6. Return to `Generation Setup`
+7. Select the visual references you want to use
+8. Choose prompt, camera, pose, and output settings
+9. Generate an image
+10. Inspect the result and review the audit panel if the output drifts from the intended character rules
 
 ## What The App Actually Does
 
@@ -98,15 +214,13 @@ The app combines:
 - QA audit and hard-repair behavior
 - multi-provider image generation
 
-into one creative workflow.
-
 Instead of treating generation like a single prompt box, the system separates the job into three distinct areas:
 
 1. Build the scene
 2. Review and generate
 3. Manage the underlying creative system
 
-That separation becomes more important as projects scale.
+This provides better scalability.
 
 ## Creative Workflow Features
 
@@ -159,23 +273,75 @@ The current pipeline includes:
 - explicit identity checks for facial-system drift, hand-digit failures, silhouette drift, and related character-rule violations
 - a hard-repair generation pass when the audit flags critical identity failures
 
-The goal is not to pretend failures do not happen.
-
 The goal is to make failures visible, inspectable, and more repairable.
 
-## Why This Matters
+## Local Data And Persistence
 
-A lot of AI tooling focuses almost entirely on model output quality.
+This project is designed around local-first use.
 
-This project focuses on the systems around the model:
+Important local runtime paths include:
 
-- how references are organized
-- how creative direction is preserved
-- how reusable workflows are constructed
-- how local creative work scales over time
-- how creators maintain control over identity and style
+- `public/managed-library/assets/`
+  - app-managed saved image files
+- `data/`
+  - local runtime data and metadata
 
-That is the kind of infrastructure required to make AI genuinely useful for long-term creative production.
+These paths are gitignored in normal use.
+
+That means:
+
+- your working assets stay local
+- your runtime data is not meant to be committed by default
+- the repo is intended as an installable app base, not a dump of your personal generation history
+
+## Troubleshooting
+
+### No image models appear in the dropdown
+
+Check:
+
+- `.env.local` exists
+- the provider key is present and valid
+- you restarted the app after editing `.env.local`
+
+### The app loads but looks unstyled
+
+I am not fully certain this will happen in every environment, but during local use the dev server can sometimes behave inconsistently with styling or hot reload.
+
+Best fix:
+
+```bash
+npm run build
+npm run start
+```
+
+If you are using `npm run dev`, try:
+
+- a hard refresh
+- restarting the dev server
+
+### A provider works, but the model is missing
+
+Check:
+
+- the correct provider key is configured
+- the app was restarted after env changes
+- that provider/model is supported in the current adapter registry
+
+### Generation feels unstable
+
+For more stable actual use:
+
+```bash
+npm run build
+npm run start
+```
+
+### My saved assets are not in GitHub
+
+That is expected for normal use.
+
+Local library files and runtime data are intentionally kept in gitignored directories so creators can work locally without publishing their private working library.
 
 ## Built For More Than One Brand
 
@@ -199,7 +365,7 @@ Any project with a strong visual identity can benefit from structured AI creativ
 
 This is an active working product build, not a polished SaaS launch.
 
-What is already strong:
+Current strengths:
 
 - local-first library direction
 - structured prompt assembly
@@ -208,13 +374,11 @@ What is already strong:
 - thoughtful UX separation between generation and management
 - growing QA visibility into generation failures
 
-What still needs hardening:
+Current documented version:
 
-- stronger identity-fidelity enforcement across image backends
-- deeper provider-specific QA tuning
-- export/import backups
-- broken-file health checks
-- richer debugging visibility into generation payloads and repair behavior
+- `0.5.0`
+
+This version number reflects a real working build that still needs broader testing, continued correction, and more provider-specific tuning.
 
 ## Stack
 
@@ -247,6 +411,8 @@ For the fuller system overview, see [ARCHITECTURE.md](./ARCHITECTURE.md).
 
 ## Repository Structure
 
+You do not need to understand the full repository structure to run the app, but this is the current high-level layout:
+
 ```text
 app/
   api/
@@ -266,66 +432,9 @@ CODEX.md                   # brand guidance used by generation
 ARCHITECTURE.md            # system overview and diagrams
 ```
 
-## Local Development
+## Release Notes
 
-### Requirements
-
-- Node.js
-- npm
-- at least one compatible image-provider API key
-
-### Setup
-
-1. Install dependencies:
-
-```bash
-npm install
-```
-
-2. Create `.env.local`:
-
-```env
-OPENAI_API_KEY=your_api_key_here
-OPENAI_TEXT_MODEL=gpt-5.5
-GEMINI_API_KEY=your_key_here
-```
-
-You only need keys for the providers you want to use.
-
-The app detects available image models from configured provider keys and lets you choose between them in the UI.
-
-3. Start the app for development:
-
-```bash
-npm run dev
-```
-
-4. Open:
-
-```text
-http://localhost:3000
-```
-
-For more stable real-world local use, build and run the production server:
-
-```bash
-npm run build
-npm run start
-```
-
-## Why This Project Is Relevant To AI Product Work
-
-Many AI tools fail because they focus only on model output and ignore workflow quality.
-
-This project focuses on the systems around the model:
-
-- how assets are organized
-- how prompts are assembled
-- how references are weighted
-- how consistency is preserved
-- how local creative work stays usable over time
-
-That is the kind of work required to make AI useful in real production environments.
+Release notes now live in [CHANGELOG.md](./CHANGELOG.md).
 
 ## Future Direction
 

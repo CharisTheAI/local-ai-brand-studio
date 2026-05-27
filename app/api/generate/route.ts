@@ -579,18 +579,29 @@ function buildGenerationPrompt(payload: GeneratePayload, codexGuidance: string) 
   const groupedReferences = summarizeReferences(payload.detailReferences || []);
   const characterSheetBlock = buildCharacterSheetBlock(payload.characterSheets || []);
   const characterIdentityBlock = buildCharacterIdentityBlock(payload.characters);
+  const compositionBrief = [
+    payload.cameraFraming ? `Camera framing: ${payload.cameraFraming}` : "",
+    payload.posePrompt ? `Pose and action: ${payload.posePrompt}` : "",
+    payload.scenePrompt ? `Scene request: ${payload.scenePrompt}` : "",
+  ]
+    .filter(Boolean)
+    .join(". ");
 
   return [
     `Create one brand-new ${payload.aspectRatio} image.`,
     "Primary goal: exact Good Vibes Club character fidelity with premium brand consistency.",
     "Characters are more important than backgrounds, environments, decorative references, scene complexity, or cinematic flourish.",
     "If there is any tension between character fidelity and scene/background styling, preserve the character exactly and simplify the environment instead.",
-    "Priority order: 1) character sheets and exact identity references, 2) exact GVC face language and anatomy rules, 3) pose and clothing request, 4) scene/background request, 5) optional accent references.",
+    "Priority order: 1) character sheets and exact identity references, 2) exact GVC face language and anatomy rules, 3) camera framing and composition request, 4) pose and clothing request, 5) scene/background request, 6) optional accent references.",
     `Template direction: ${payload.templateName || "custom GVC content"}.`,
     `Tone direction: ${payload.tone || "custom"}.`,
     payload.promptStarterText
       ? `Prompt starter guidance: ${payload.promptStarterText}. Use it only as supporting direction. Never let it override character identity or GVC rules.`
       : "",
+    compositionBrief
+      ? `Primary composition brief: ${compositionBrief}. Treat camera framing and pose/action as mandatory composition instructions, not optional suggestions.`
+      : "",
+    "Do not ignore the requested camera framing. The shot type, distance, and composition should match the requested framing unless doing so would break exact character identity.",
     `Camera framing: ${payload.cameraFraming}.`,
     `Scene request: ${payload.scenePrompt}.`,
     `Pose and action: ${payload.posePrompt}.`,
@@ -709,7 +720,7 @@ async function runQualityQaCheck(args: {
     { type: "input_image", image_url: generatedImageDataUrl, detail: "high" },
     {
       type: "input_text",
-      text: `Generated image to judge above. Main prompt: ${payload.scenePrompt}. Pose/action: ${payload.posePrompt}.`,
+      text: `Generated image to judge above. Camera framing: ${payload.cameraFraming}. Main prompt: ${payload.scenePrompt}. Pose/action: ${payload.posePrompt}.`,
     },
   ];
 
