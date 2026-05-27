@@ -1,155 +1,220 @@
 # local-ai-brand-studio
 
-Local-first, reference-driven AI content studio for building brand-consistent image prompts, managing reusable assets, and generating character-based visual content.
+> Local-first AI creative infrastructure for building consistent, character-driven content systems.
 
-## Overview
+A reference-driven AI content studio for creators, collectible brands, NFT ecosystems, and visual storytelling workflows that need more than random prompt experimentation.
 
-Most AI image tools are great at novelty and weak at maintaining brand consistency.
+Built using the GVC Builder Kit and shaped around a simple idea:
 
-This project is an attempt to close that gap.
+> AI generation becomes much more useful when creative systems are treated like production workflows instead of one-off prompts.
 
-`local-ai-brand-studio` is a local creative tool designed to:
+## Why This Exists
 
-- organize a reusable brand asset library
-- structure prompt inputs instead of throwing references into one pile
-- preserve character integrity across generations
-- keep images and workspace data local-first
-- support high-quality prompt engineering that can outlive any single model vendor
+Most AI image tools are optimized for novelty.
 
-Core idea:
+Very few are optimized for:
 
-> Pick the right references, prompt with intent, preserve the brand system, and make image generation feel more like a real production workflow than a one-off experiment.
+- character consistency
+- reusable visual systems
+- scalable creative workflows
+- persistent creative direction
+- long-term brand integrity
 
-## What This Project Demonstrates
+That becomes a real problem for:
 
-This repo is especially relevant for:
+- NFT collections
+- character universes
+- creator brands
+- indie game concepts
+- meme ecosystems
+- AI-native media projects
 
-- applied AI product thinking
-- prompt engineering as system design
-- multimodal UX for reference-driven generation
-- local-first asset management
-- human-in-the-loop content tooling
-- frontend and backend coordination in AI workflows
+Because "close enough" usually fails.
 
-## Core Capabilities
+`local-ai-brand-studio` was built to explore a different direction:
+
+> structured, reusable, local-first AI-assisted creative workflows.
+
+## Core Philosophy
+
+### 1. Creative systems matter more than individual prompts
+
+Prompts are temporary.
+
+Systems scale.
+
+This project is designed to build reusable creative infrastructure:
+
+- asset libraries
+- prompt systems
+- scene-building workflows
+- character rules
+- reusable framing and pose presets
+- QA audit and repair behavior
+- persistent local creative state
+
+### 2. Models will continue to change
+
+The workflow should survive model changes.
+
+This app is intentionally model-aware at the adapter layer and model-agnostic at the workflow layer.
+
+Today it supports multiple provider adapters in the same UI, and it is designed so future adapters can be added without rebuilding the whole product around one vendor.
+
+The goal is not to lock creativity to a single model.
+
+The goal is to preserve the workflow.
+
+### 3. Local-first ownership matters
+
+Creative assets should stay under the creator's control.
+
+This project keeps, whenever possible:
+
+- visual references
+- workspace state
+- reusable assets
+- generation systems
+
+stored locally on the creator's machine.
+
+That improves:
+
+- control
+- reliability
+- image preservation
+- workflow durability
+- long-term maintainability
+
+## What The App Actually Does
+
+The app combines:
+
+- structured scene building
+- reusable reference systems
+- role-aware prompt construction
+- local asset management
+- reusable text presets
+- QA audit and hard-repair behavior
+- multi-provider image generation
+
+into one creative workflow.
+
+Instead of treating generation like a single prompt box, the system separates the job into three distinct areas:
+
+1. Build the scene
+2. Review and generate
+3. Manage the underlying creative system
+
+That separation becomes more important as projects scale.
+
+## Creative Workflow Features
 
 ### Visual Asset Library
 
-- Backgrounds
+Manage reusable visual systems including:
+
 - Character Sheets
-- Character Scenes
 - Characters
+- Character Scenes
+- Backgrounds
+- Logos
 - Badges
 - Textures & Patterns
-- Logos
 
-### Text Asset Library
+### Reusable Text Assets
+
+Save and reuse structured creative direction including:
 
 - Prompt Starters
 - Camera Framing Presets
 - Pose & Action Presets
 
-### Features
+This makes it possible to build modular workflows instead of rewriting creative direction from scratch every session.
 
-- clickable thumbnail-based generation inputs
-- multi-character scene selection
-- multi-background reference blending
-- local managed-file storage for visual assets
-- local workspace persistence plus backup
-- role-aware backend prompt construction
-- model-agnostic generation architecture with multiple provider adapters
-- selectable image models in the UI when compatible provider keys are configured
-- QA audit and correction flow for generated outputs
-
-## Product Design Approach
-
-This is not just a prompt form.
-
-The app separates the workflow into 3 distinct jobs:
-
-1. Build the scene
-2. Review and generate
-3. Manage the underlying asset system
-
-That separation matters because creative tools break down quickly when generation controls, library administration, and review outputs are all mixed together.
-
-## Technical Highlights
-
-### 1. Role-Aware Prompt Construction
+### Role-Aware Prompt Construction
 
 The backend does not treat all references equally.
 
-It distinguishes between:
+A character sheet should not be weighted the same way as:
 
-- character sheets
-- characters
-- character scenes
-- primary backgrounds
-- additional background blend references
-- badges
-- textures and patterns
-- logos
-- text presets such as framing and pose
+- a background
+- a character scene
+- a badge
+- a texture reference
+- a framing preset
+- a pose preset
 
-Each element is injected into prompts with intent, not just presence.
+The app assembles prompts intentionally based on reference role and creative purpose.
 
-### 2. QA Audit And Correction Loop
+The result is meant to feel less like chatting with an AI and more like directing a small production workflow.
 
-Generated images are not treated as automatically acceptable.
+### QA Audit And Hard Repair
+
+Generated outputs are not treated as automatically successful.
 
 The current pipeline includes:
 
-- a QA audit pass against the selected canonical references
-- explicit identity checks for facial-system drift, hand-digit failures, silhouette drift, and other character-rule violations
-- a correction pass that attempts to repair flagged outputs while preserving the successful parts of the scene
+- one QA audit pass against selected references
+- explicit identity checks for facial-system drift, hand-digit failures, silhouette drift, and related character-rule violations
+- a hard-repair generation pass when the audit flags critical identity failures
 
-This makes failures more visible, improves iteration, and creates a foundation for provider-specific quality control across future image backends.
+The goal is not to pretend failures do not happen.
 
-### 3. Brand Guidance As Active Input
+The goal is to make failures visible, inspectable, and more repairable.
 
-Brand rules are not passive documentation.
+## Why This Matters
 
-The system reads [`CODEX.md`](./CODEX.md) and injects that guidance directly into generation so outputs reflect:
+A lot of AI tooling focuses almost entirely on model output quality.
 
-- visual system rules
-- character language
-- quality standards
+This project focuses on the systems around the model:
 
-### 4. Character Integrity Focus
+- how references are organized
+- how creative direction is preserved
+- how reusable workflows are constructed
+- how local creative work scales over time
+- how creators maintain control over identity and style
 
-The app is designed around the idea that details matter:
+That is the kind of infrastructure required to make AI genuinely useful for long-term creative production.
 
-- face language
-- hand style
-- body shape
-- accessories
-- outfit logic
-- silhouette consistency
+## Built For More Than One Brand
 
-This is especially important for collectible and character-driven brands where "close enough" usually fails.
+This project was originally developed using the Good Vibes Club Builder Kit and follows GVC-inspired workflow principles around identity consistency, reference hierarchy, and scene discipline.
 
-### 5. Local-First Asset Handling
+But the larger idea extends beyond a single collection.
 
-Instead of keeping large visual assets trapped in browser storage, saved files are written into an app-managed local folder and referenced from there.
+The workflow could be adapted for:
 
-That improves:
+- collectible projects
+- creator brands
+- character franchises
+- indie game worlds
+- meme projects
+- AI-assisted animation concepts
+- visual storytelling systems
 
-- original image quality preservation
-- performance
-- scale
-- storage reliability
+Any project with a strong visual identity can benefit from structured AI creative workflows.
 
-### 6. Product Thinking Over Demo Thinking
+## Current Status
 
-This project intentionally moves beyond "AI demo app" design.
+This is an active working product build, not a polished SaaS launch.
 
-Key UX considerations:
+What is already strong:
 
-- searchable asset browsers
-- pop-out editing flows
-- compact library views
-- reusable text presets
-- clear separation between generation and management
+- local-first library direction
+- structured prompt assembly
+- reusable reference and preset systems
+- multi-provider image model selection
+- thoughtful UX separation between generation and management
+- growing QA visibility into generation failures
+
+What still needs hardening:
+
+- stronger identity-fidelity enforcement across image backends
+- deeper provider-specific QA tuning
+- export/import backups
+- broken-file health checks
+- richer debugging visibility into generation payloads and repair behavior
 
 ## Stack
 
@@ -157,9 +222,10 @@ Key UX considerations:
 - React
 - TypeScript
 - Tailwind CSS
-- OpenAI and Google Gemini adapters for current testing
-- local filesystem persistence via Next.js route handlers
 - SQLite library metadata management
+- local filesystem persistence via Next.js route handlers
+- OpenAI adapters for current testing
+- Google Gemini adapters for current testing
 
 ## Architecture At A Glance
 
@@ -171,7 +237,7 @@ flowchart LR
   B --> C["Provider adapter"]
   C --> D["Image generation backend"]
   D --> E["Generated image results"]
-  E --> F["QA audit + correction pass"]
+  E --> F["QA audit + hard-repair pass when flagged"]
   G["Saved Visual Assets"] --> H["Managed local asset files"]
   I["Saved Text Assets"] --> B
   J["SQLite library metadata"] --> G
@@ -224,9 +290,11 @@ OPENAI_TEXT_MODEL=gpt-5.5
 GEMINI_API_KEY=your_key_here
 ```
 
-You only need the keys for the providers you want to use. The app detects available image models from configured provider keys and lets you choose between them in the UI.
+You only need keys for the providers you want to use.
 
-3. Start the app:
+The app detects available image models from configured provider keys and lets you choose between them in the UI.
+
+3. Start the app for development:
 
 ```bash
 npm run dev
@@ -238,29 +306,16 @@ npm run dev
 http://localhost:3000
 ```
 
-## Current Status
+For more stable real-world local use, build and run the production server:
 
-This is an active working product build, not a polished SaaS launch.
+```bash
+npm run build
+npm run start
+```
 
-What is already strong:
+## Why This Project Is Relevant To AI Product Work
 
-- local-first library direction
-- structured prompt assembly
-- reusable reference and preset systems
-- thoughtful UX iteration around asset scale and generation flow
-- multi-provider image model selection
-
-What still needs hardening:
-
-- stronger identity-fidelity enforcement across image backends
-- export/import backups
-- broken-file health checks
-- richer debugging visibility into generation payloads and QA results
-- deeper provider-specific QA and repair logic
-
-## Why This Matters For AI Product Work
-
-A lot of AI tooling fails because it focuses only on model output and ignores workflow quality.
+Many AI tools fail because they focus only on model output and ignore workflow quality.
 
 This project focuses on the systems around the model:
 
@@ -270,23 +325,34 @@ This project focuses on the systems around the model:
 - how consistency is preserved
 - how local creative work stays usable over time
 
-That is the kind of work required to make AI useful in actual production environments.
+That is the kind of work required to make AI useful in real production environments.
 
-## Future Development
+## Future Direction
 
-This project is evolving toward a more complete multimodal content system beyond static image generation.
+The long-term direction extends beyond static image generation.
 
-- video, GIF, and meme generation from structured scene inputs
-- integrated audio workflows aligned with content and tone
-- character-driven script and narrative generation for consistent storytelling
-- cross-modal workflows combining image, video, audio, and text into unified outputs
-- advanced character systems with persistent identity and multi-character interaction
+Likely exploration areas include:
 
-Goal: evolve from a prompt-based tool into a fuller AI-assisted content production system for scalable, brand-consistent creative work.
+- video and GIF workflows
+- meme systems built from structured scene inputs
+- integrated audio workflows aligned with tone and content
+- character-driven scripting and storytelling support
+- broader multimodal workflows combining image, video, audio, and text
+
+The larger goal is to evolve toward a creator-owned AI production system for scalable visual storytelling.
 
 ## Credits And Usage Notes
 
-- Made using the GVC Builder Kit https://github.com/brydisanto/gvc-builder-kit
+- Made using the GVC Builder Kit
+- Reference: [brydisanto/gvc-builder-kit](https://github.com/brydisanto/gvc-builder-kit)
 - Personal-use project
 - Not officially approved or endorsed by Good Vibes Club
-- Respect the original kit's usage terms and visible credit requirements
+- Respect the original Builder Kit's usage terms and visible credit requirements
+
+## Final Thought
+
+AI models will continue changing rapidly.
+
+Creative systems are what last.
+
+If you are building worlds, characters, brands, or visual storytelling workflows, I hope this project gives you ideas for building something more durable than a single prompt.
